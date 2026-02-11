@@ -1,2 +1,2 @@
 export * from "./AdminLogin";
-export * from "./ImportTestPage";
+export * from "./AdminDashboard";

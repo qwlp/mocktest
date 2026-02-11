@@ -48,8 +48,7 @@ export function FillInBlankQuestion({
   const isCorrect = showFeedback ? checkAnswer() : null;
 
   const getTextColor = () => {
-    if (!showFeedback || !inputValue.trim())
-      return "text-gray-900 dark:text-dark-text";
+    if (!showFeedback || !inputValue.trim()) return "dark:text-dark-text";
 
     return isCorrect
       ? "text-green-800 dark:text-green-200"
@@ -153,7 +152,7 @@ export function FillInBlankQuestion({
 
       {showFeedback && (
         <div className="mt-6 p-4 bg-gray-50 dark:bg-dark-surface rounded-lg border border-gray-200 dark:border-dark-border">
-          <h4 className="font-semibold text-gray-800 dark:text-dark-text mb-2">
+          <h4 className="font-semibold  dark:text-dark-text mb-2">
             Correct Answers:
           </h4>
           <div className="space-y-1">

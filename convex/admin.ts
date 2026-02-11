@@ -347,3 +347,192 @@ export const importTestsFromJson = mutation({
     };
   },
 });
+
+// Get all tests for admin dashboard
+export const getAllTests = query({
+  args: {},
+  handler: async (ctx) => {
+    const tests = await ctx.db.query("tests").collect();
+    return Promise.all(
+      tests.map(async (test) => {
+        const questions = await ctx.db
+          .query("questions")
+          .withIndex("by_testId", (q) => q.eq("testId", test._id))
+          .collect();
+        return {
+          ...test,
+          questionCount: questions.length,
+        };
+      }),
+    );
+  },
+});
+
+// Get a single test with all questions
+export const getTestWithQuestions = query({
+  args: {
+    testId: v.id("tests"),
+  },
+  handler: async (ctx, args) => {
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found");
+    }
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_testId", (q) => q.eq("testId", args.testId))
+      .collect();
+    return {
+      test,
+      questions,
+    };
+  },
+});
+
+// Create a new test
+export const createTest = mutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const testId = await ctx.db.insert("tests", {
+      name: args.name,
+      description: args.description,
+    });
+    return testId;
+  },
+});
+
+// Update a test
+export const updateTest = mutation({
+  args: {
+    testId: v.id("tests"),
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.testId, {
+      name: args.name,
+      description: args.description,
+    });
+    return { success: true };
+  },
+});
+
+// Delete a test
+export const deleteTest = mutation({
+  args: {
+    testId: v.id("tests"),
+  },
+  handler: async (ctx, args) => {
+    // Delete all questions associated with the test
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_testId", (q) => q.eq("testId", args.testId))
+      .collect();
+
+    for (const question of questions) {
+      await ctx.db.delete(question._id);
+    }
+
+    // Delete the test
+    await ctx.db.delete(args.testId);
+    return { success: true };
+  },
+});
+
+// Add a question to a test
+export const addQuestion = mutation({
+  args: {
+    testId: v.id("tests"),
+    text: v.string(),
+    type: v.union(
+      v.literal("mcq"),
+      v.literal("tf"),
+      v.literal("ms"),
+      v.literal("matching"),
+      v.literal("fib"),
+    ),
+    options: v.optional(v.array(v.string())),
+    correctAnswers: v.array(v.string()),
+    matchingPairs: v.optional(
+      v.array(
+        v.object({
+          prompt: v.string(),
+          answer: v.string(),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Generate a unique question ID
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_testId", (q) => q.eq("testId", args.testId))
+      .collect();
+
+    const existingIds = new Set(questions.map((q) => q.questionId));
+    let newId = 1;
+    while (existingIds.has(`q${newId}`)) {
+      newId++;
+    }
+
+    const questionId = await ctx.db.insert("questions", {
+      testId: args.testId,
+      text: args.text,
+      type: args.type,
+      options: args.options || [],
+      correctAnswers: args.correctAnswers,
+      questionId: `q${newId}`,
+      matchingPairs: args.matchingPairs,
+    });
+    return questionId;
+  },
+});
+
+// Update a question
+export const updateQuestion = mutation({
+  args: {
+    questionId: v.id("questions"),
+    text: v.string(),
+    type: v.union(
+      v.literal("mcq"),
+      v.literal("tf"),
+      v.literal("ms"),
+      v.literal("matching"),
+      v.literal("fib"),
+    ),
+    options: v.optional(v.array(v.string())),
+    correctAnswers: v.array(v.string()),
+    matchingPairs: v.optional(
+      v.array(
+        v.object({
+          prompt: v.string(),
+          answer: v.string(),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.questionId, {
+      text: args.text,
+      type: args.type,
+      options: args.options || [],
+      correctAnswers: args.correctAnswers,
+      matchingPairs: args.matchingPairs,
+    });
+    return { success: true };
+  },
+});
+
+// Delete a question
+export const deleteQuestion = mutation({
+  args: {
+    questionId: v.id("questions"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.questionId);
+    return { success: true };
+  },
+});

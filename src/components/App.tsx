@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Toaster } from "sonner";
 import { PracticeTestPage } from "./test/PracticeTestPage";
 import { TestListPage } from "./test/TestListPage";
-import { AdminLogin, ImportTestPage } from "./admin";
+import { AdminLogin, AdminDashboard } from "./admin";
 import { Id } from "../../convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -267,7 +267,7 @@ export default function App() {
               />
             )}
             {currentPage === "admin" && isAdminLoggedIn && (
-              <ImportTestPage onBack={() => setCurrentPage("list")} />
+              <AdminDashboard onBack={() => setCurrentPage("list")} />
             )}
           </div>
         )}

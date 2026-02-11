@@ -14,12 +14,12 @@ export function TestHeader({ test, onExitTest }: TestHeaderProps) {
               <h1 className="text-2xl font-bold text-gray-800 dark:text-dark-text">
               {test.name}
               </h1>
+              {test.description && (
+              <p className="text-gray-700 dark:text-white mt-1">
+              {test.description}
+              </p>
+              )}
     */}
-        {test.description && (
-          <p className="text-gray-700 dark:text-white mt-1">
-            {test.description}
-          </p>
-        )}
       </div>
       <button onClick={onExitTest} className="btn btn-secondary">
         Exit Test
