@@ -1,0 +1,157 @@
+[
+	{
+  "name": "Java Phase Test - 2",
+  "description": "A quiz covering topics from your Java Phase Test - 2.",
+  "questions": [
+    {
+      "id": "java_q1",
+      "text": "What is the correct way to declare an array of integers named 'numbers' with a size of 5 in Java?",
+      "type": "mcq",
+      "options": [
+        "int numbers = new array[5];",
+        "int[] numbers = new int(5);",
+        "int[] numbers = new int[5];",
+        "array<int> numbers = new array<int>(5);"
+      ],
+      "correctAnswers": [
+        "int[] numbers = new int[5];"
+      ]
+    },
+    {
+      "id": "java_q2",
+      "text": "Which of the following String class methods can be used to compare the content of two strings?",
+      "type": "mcq",
+      "options": [
+        "==",
+        "equals()",
+        "compareTo()",
+        "equalsIgnoreCase()"
+      ],
+      "correctAnswers": [
+        "equals()",
+        "compareTo()",
+        "equalsIgnoreCase()"
+      ]
+    },
+    {
+      "id": "java_q3",
+      "text": "Linear search has a time complexity of O(n).",
+      "type": "tf",
+      "options": ["True", "False"],
+      "correctAnswers": ["True"]
+    },
+    {
+      "id": "java_q4",
+      "text": "Which of the following is NOT a primitive data type in Java?",
+      "type": "mcq",
+      "options": ["int", "boolean", "String", "float"],
+      "correctAnswers": ["String"]
+    },
+    {
+      "id": "java_q5",
+      "text": "Can a class extend multiple classes in Java?",
+      "type": "tf",
+      "options": ["True", "False"],
+      "correctAnswers": ["False"]
+    },
+    {
+      "id": "java_q6",
+      "text": "Which keyword is used to implement inheritance in Java?",
+      "type": "mcq",
+      "options": ["implements", "extends", "inherits", "subclass"],
+      "correctAnswers": ["extends"]
+    },
+    {
+      "id": "java_q7",
+      "text": "What is method overriding in Java?",
+      "type": "mcq",
+      "options": [
+        "Defining a new method with the same name but different parameters in the same class.",
+        "Defining a method in a subclass with the same name and parameters as a method in its superclass.",
+        "Defining multiple methods with the same name in the same class.",
+        "Calling a method of the superclass from the subclass."
+      ],
+      "correctAnswers": [
+        "Defining a method in a subclass with the same name and parameters as a method in its superclass."
+      ]
+    },
+    {
+      "id": "java_q8",
+      "text": "Which of the following are unchecked exceptions in Java?",
+      "type": "ms",
+      "options": ["IOException", "SQLException", "NullPointerException", "ArrayIndexOutOfBoundsException"],
+      "correctAnswers": ["NullPointerException", "ArrayIndexOutOfBoundsException"]
+    },
+    {
+      "id": "java_q9",
+      "text": "The 'finally' block in a try-catch-finally statement is always executed.",
+      "type": "tf",
+      "options": ["True", "False"],
+      "correctAnswers": ["True"]
+    },
+    {
+      "id": "java_q10",
+      "text": "What is the time complexity of the binary search algorithm?",
+      "type": "mcq",
+      "options": ["O(n)", "O(log n)", "O(n^2)", "O(1)"],
+      "correctAnswers": ["O(log n)"]
+    },
+    {
+      "id": "java_q11",
+      "text": "Which of the following statements is true about Java?",
+      "type": "mcq",
+      "options": [
+        "Java supports multiple inheritance through classes.",
+        "Java supports multiple inheritance through interfaces.",
+        "Java does not support inheritance.",
+        "Java only supports single inheritance through interfaces."
+      ],
+      "correctAnswers": [
+        "Java supports multiple inheritance through interfaces."
+      ]
+    },
+    {
+      "id": "java_q12",
+      "text": "What is the purpose of the 'super' keyword in Java?",
+      "type": "mcq",
+      "options": [
+        "To define a superclass.",
+        "To call a method of the superclass.",
+        "To create an instance of the superclass.",
+        "To indicate that a class is a superclass."
+      ],
+      "correctAnswers": [
+        "To call a method of the superclass."
+      ]
+    },
+    {
+      "id": "java_q13",
+      "text": "Which sorting algorithm has an average time complexity of O(n log n)?",
+      "type": "mcq",
+      "options": ["Bubble Sort", "Insertion Sort", "Selection Sort", "Merge Sort"],
+      "correctAnswers": ["Merge Sort"]
+    },
+    {
+      "id": "java_q14",
+      "text": "What will be the output of `\"Hello\".substring(1, 4)`?",
+      "type": "mcq",
+      "options": ["ello", "ell", "Hell", "ello "],
+      "correctAnswers": ["ell"]
+    },
+    {
+      "id": "java_q15",
+      "text": "Which of the following is a valid way to handle a potential exception in Java?",
+      "type": "mcq",
+      "options": [
+        "throw new Exception;",
+        "catch (Exception e) {}",
+        "finally {}",
+        "All of the above"
+      ],
+      "correctAnswers": [
+        "All of the above"
+      ]
+    }
+  ]
+}
+]

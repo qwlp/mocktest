@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-light-bg: #ffffff;
+  --color-light-text: #171717; /* Tailwind gray-900 */
+  --color-light-text-secondary: #6b7280; /* Tailwind gray-500 */
+  --color-light-surface: #f9fafb; /* Tailwind gray-50 */
+  --color-light-border: #e5e7eb; /* Tailwind gray-200 */
+
+  --color-dark-bg: theme('colors.dark.background');
+  --color-dark-text: theme('colors.dark.text');
+  --color-dark-text-secondary: theme('colors.dark.text-secondary');
+  --color-dark-surface: theme('colors.dark.surface');
+  --color-dark-border: theme('colors.dark.border');
+
+  --color-primary: theme('colors.primary.DEFAULT');
+  --color-primary-hover: theme('colors.primary.hover');
+  --color-primary-dark-theme: theme('colors.dark.primary');
+  --color-primary-hover-dark-theme: theme('colors.dark.primary-hover');
+}
+
+body {
+  font-family: 'Lato', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  background-color: var(--color-light-bg);
+  color: var(--color-light-text);
+}
+
+.dark body {
+  background-color: var(--color-dark-bg);
+  color: var(--color-dark-text);
+}
+
+.accent-text {
+  @apply text-slate-600 dark:text-slate-400;
+}
+
+/* Auth input fields */
+.auth-input-field {
+  @apply w-full px-4 py-3 rounded-container bg-white border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow shadow-sm hover:shadow 
+  dark:bg-dark-surface dark:border-dark-border dark:text-dark-text dark:placeholder-gray-500 dark:focus:border-dark-primary dark:focus:ring-dark-primary;
+}
+
+/* Auth buttons */
+.auth-button {
+  @apply w-full px-4 py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-colors shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed 
+  dark:bg-dark-primary dark:hover:bg-dark-primary-hover dark:text-white;
+}
+
+/* General button styling - can be extended or customized */
+.btn {
+  @apply px-4 py-2 rounded font-semibold transition-colors shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply bg-primary text-white hover:bg-primary-hover 
+  dark:bg-dark-primary dark:text-white dark:hover:bg-dark-primary-hover;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-700 hover:bg-gray-300 
+  dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white hover:bg-red-600 
+  dark:bg-red-600 dark:text-white dark:hover:bg-red-700;
+}
+
+/* Card/Container styling */
+.card {
+  @apply bg-white shadow-lg rounded-lg 
+  dark:bg-dark-surface;
+}
+
+/* Custom prose styling for better integration */
+.prose {
+  @apply text-gray-700 dark:text-dark-text-secondary;
+}
+
+.prose strong {
+  @apply text-gray-900 dark:text-dark-text font-semibold;
+}
+
+.prose em {
+  @apply text-gray-600 dark:text-dark-text-secondary;
+}
+
+.prose code {
+  @apply bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1 py-0.5 rounded text-sm;
+}
+
+.prose p {
+  @apply mb-2 last:mb-0;
+}
+
+/* Table styling for GFM tables */
+.prose table {
+  @apply w-full border-collapse border border-gray-300 dark:border-gray-600 my-4;
+}
+
+.prose th {
+  @apply bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-3 py-2 text-left font-semibold text-gray-900 dark:text-dark-text;
+}
+
+.prose td {
+  @apply border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-700 dark:text-dark-text-secondary;
+}
+
+.prose tr:nth-child(even) {
+  @apply bg-gray-50 dark:bg-gray-800/50;
+}
+
+/* Additional GFM styling */
+.prose del {
+  @apply text-gray-500 dark:text-gray-400;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic text-gray-600 dark:text-gray-400;
+}
