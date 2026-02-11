@@ -3,27 +3,36 @@ import { Doc } from "../../../convex/_generated/dataModel";
 
 interface TestHeaderProps {
   test: Doc<"tests">;
+  currentQuestionIndex: number;
+  totalQuestions: number;
   onExitTest: () => void;
+  onSubmit: () => void;
+  isSubmitted: boolean;
 }
 
-export function TestHeader({ test, onExitTest }: TestHeaderProps) {
+export function TestHeader({
+  test,
+  currentQuestionIndex,
+  totalQuestions,
+  onExitTest,
+  onSubmit,
+  isSubmitted,
+}: TestHeaderProps) {
   return (
-    <div className="flex justify-between items-center mb-6">
-      <div>
-        {/*
-              <h1 className="text-2xl font-bold text-gray-800 dark:text-dark-text">
-              {test.name}
-              </h1>
-              {test.description && (
-              <p className="text-gray-700 dark:text-white mt-1">
-              {test.description}
-              </p>
-              )}
-    */}
+    <div className="flex justify-between items-center mb-8">
+      <div className="hidden sm:flex items-center gap-12"></div>
+
+      <div className="flex gap-4">
+        {!isSubmitted && (
+          <button onClick={onSubmit} className="btn btn-primary ripple">
+            Submit
+          </button>
+        )}
+
+        <button onClick={onExitTest} className="btn btn-secondary">
+          Exit Test
+        </button>
       </div>
-      <button onClick={onExitTest} className="btn btn-secondary">
-        Exit Test
-      </button>
     </div>
   );
 }

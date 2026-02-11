@@ -233,7 +233,14 @@ export function PracticeTestPage({
           <div className="card p-6 sm:p-8">
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
-              <TestHeader test={test} onExitTest={handleExitTest} />
+              <TestHeader
+                test={test}
+                currentQuestionIndex={currentQuestionIndex}
+                totalQuestions={questions.length}
+                onExitTest={handleExitTest}
+                onSubmit={() => setShowConfirmModal(true)}
+                isSubmitted={isSubmitted}
+              />
               <KeyboardShortcutsButton onClick={() => setShowShortcuts(true)} />
             </div>
 
