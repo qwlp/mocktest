@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { QuestionStatus } from "../../types";
+import { Check, ChevronLeft } from "lucide-react";
 
 interface QuestionNavProps {
   questions: Doc<"questions">[];
@@ -8,6 +9,22 @@ interface QuestionNavProps {
   onQuestionSelect: (index: number) => void;
   getQuestionStatus: (index: number) => QuestionStatus;
   isSubmitted: boolean;
+}
+
+function QuestionTypeBadge({ type }: { type: string }) {
+  const typeLabels: Record<string, string> = {
+    mcq: "MC",
+    tf: "T/F",
+    ms: "MS",
+    matching: "M",
+    fib: "FIB",
+  };
+
+  return (
+    <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--color-text-muted)]">
+      {typeLabels[type] || type}
+    </span>
+  );
 }
 
 export function QuestionNav({
@@ -19,152 +36,145 @@ export function QuestionNav({
 }: QuestionNavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
-  const answeredCount = questions.filter(
-    (_, index) => getQuestionStatus(index) === "answered",
-  ).length;
-  const progressPercentage = Math.round(
-    (answeredCount / questions.length) * 100,
-  );
-
   return (
     <div
       className={`
-      relative bg-gray-100 dark:bg-dark-surface rounded-lg shadow-lg transition-all duration-300 ease-in-out
-      ${isCollapsed ? "w-16" : "w-64"}
+      relative rounded-2xl shadow-soft transition-all duration-300 ease-out overflow-hidden
+      ${isCollapsed ? "w-16" : "w-full"}
     `}
+      style={{ backgroundColor: "var(--color-surface)" }}
     >
       {/* Toggle Button */}
       <button
-        onClick={toggleCollapse}
-        className="absolute -right-3 top-4 z-10 w-6 h-6 bg-blue-500 dark:bg-dark-primary text-white rounded-full flex items-center justify-center shadow-md hover:bg-blue-600 dark:hover:bg-dark-primary-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-dark-primary"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="absolute -right-0 top-1 z-10 w-6 h-6 rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110"
+        style={{
+          backgroundColor: "var(--color-primary)",
+          color: "white",
+        }}
         aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
         aria-expanded={!isCollapsed}
       >
-        <svg
-          className={`w-3 h-3 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
+        <ChevronLeft
+          className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
+        />
       </button>
 
-      <div className="p-4 overflow-hidden">
+      <div className="p-4">
         {/* Header */}
         <div
-          className={`transition-opacity duration-300 ${isCollapsed ? "opacity-0" : "opacity-100"}`}
+          className={`transition-all duration-300 ${isCollapsed ? "opacity-0" : "opacity-100"}`}
         >
-          <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-dark-text">
+          <h3 className="text-lg font-display font-bold mb-1 text-[var(--color-text)]">
             Questions
           </h3>
-
-          {/* Progress Summary */}
-          <div className="mb-4 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600 dark:text-dark-text-secondary">
-                Progress
-              </span>
-              <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                {answeredCount}/{questions.length}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-              <div
-                className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
-              {progressPercentage}% Complete
-            </div>
-          </div>
+          <p className="text-xs text-[var(--color-text-muted)] mb-4">
+            {
+              questions.filter((_, i) => getQuestionStatus(i) === "answered")
+                .length
+            }{" "}
+            of {questions.length} answered
+          </p>
         </div>
 
-        {/* Collapsed State Indicator */}
-        {isCollapsed && (
-          <div className="flex flex-col items-center space-y-2">
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                {answeredCount}
-              </span>
-            </div>
-            <div className="w-2 bg-gray-200 dark:bg-gray-600 rounded-full h-16 relative">
-              <div
-                className="bg-blue-500 dark:bg-blue-400 rounded-full transition-all duration-500 absolute bottom-0 w-full"
-                style={{ height: `${progressPercentage}%` }}
-              />
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              {questions.length}
-            </div>
-          </div>
-        )}
-
-        {/* Questions List */}
+        {/* Questions Grid */}
         <div
           className={`
-          transition-all duration-300 overflow-y-auto
-          ${isCollapsed ? "opacity-0 max-h-0" : "opacity-100 max-h-96"}
+          transition-all duration-300
+          ${isCollapsed ? "opacity-0 max-h-0" : "opacity-100"}
         `}
         >
-          <ul className="space-y-2">
-            {questions.map((q, index) => (
-              <li key={q._id}>
+          <div className="grid grid-cols-4 gap-2">
+            {questions.map((q, index) => {
+              const status = getQuestionStatus(index);
+              const isActive = currentQuestionIndex === index;
+              const isAnswered = status === "answered";
+
+              return (
                 <button
+                  key={q._id}
                   onClick={() => onQuestionSelect(index)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-200 transform hover:scale-105
+                  className={`
+                    relative aspect-square rounded-xl flex items-center justify-center
+                    font-semibold text-sm transition-all duration-200
                     ${
-                      currentQuestionIndex === index
-                        ? "bg-blue-500 text-white dark:bg-dark-primary dark:text-white shadow-md"
-                        : "bg-white hover:bg-gray-50 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-dark-text-secondary hover:shadow-sm"
+                      isActive
+                        ? "ring-2 ring-[var(--color-primary)] ring-offset-2"
+                        : ""
                     }
-                    ${getQuestionStatus(index) === "answered" ? "border-l-4 border-green-500 dark:border-green-400" : "border-l-4 border-transparent"}
+                    ${
+                      isAnswered
+                        ? "bg-[var(--color-success)] text-white shadow-md"
+                        : isActive
+                          ? "bg-[var(--color-primary)] text-white shadow-md"
+                          : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:opacity-80"
+                    }
                   `}
                   aria-label={`Go to question ${index + 1}`}
-                  aria-current={
-                    currentQuestionIndex === index ? "true" : "false"
-                  }
+                  aria-current={isActive ? "true" : "false"}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Question {index + 1}</span>
-                    {getQuestionStatus(index) === "answered" && (
-                      <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-2 py-1 rounded-full">
-                        ✓
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs opacity-75 mt-1">
-                    {q.type === "mcq" && "Multiple Choice"}
-                    {q.type === "tf" && "True/False"}
-                    {q.type === "ms" && "Multiple Select"}
-                    {q.type === "matching" && "Matching"}
-                    {q.type === "fib" && "Fill in the Blank"}
-                  </div>
+                  {isAnswered ? <Check className="w-4 h-4" /> : index + 1}
+
+                  {/* Active indicator */}
+                  {isActive && (
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[var(--color-primary-light)]" />
+                  )}
                 </button>
-              </li>
-            ))}
-          </ul>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Footer (when expanded) */}
+        {/* Collapsed View - Just numbers */}
         <div
           className={`
-          mt-4 pt-3 border-t border-gray-200 dark:border-gray-600 transition-opacity duration-300
+          transition-all duration-300 flex flex-col items-center gap-2
+          ${isCollapsed ? "opacity-100" : "opacity-0 max-h-0"}
+        `}
+        >
+          {questions.map((q, index) => {
+            const status = getQuestionStatus(index);
+            const isActive = currentQuestionIndex === index;
+            const isAnswered = status === "answered";
+
+            return (
+              <button
+                key={q._id}
+                onClick={() => onQuestionSelect(index)}
+                className={`
+                  w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
+                  transition-all duration-200
+                  ${
+                    isAnswered
+                      ? "bg-[var(--color-success)] text-white"
+                      : isActive
+                        ? "bg-[var(--color-primary)] text-white"
+                        : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
+                  }
+                `}
+              >
+                {isAnswered ? "✓" : index + 1}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div
+          className={`
+          mt-4 pt-4 border-t border-[var(--color-border)] transition-all duration-300
           ${isCollapsed ? "opacity-0" : "opacity-100"}
         `}
         >
-          <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            {isSubmitted ? "Test Submitted" : "Click questions to navigate"}
+          <div className="text-xs text-center text-[var(--color-text-muted)]">
+            {isSubmitted ? (
+              <span className="text-[var(--color-success)] font-medium flex items-center justify-center gap-1">
+                <Check className="w-3 h-3" />
+                Test Submitted
+              </span>
+            ) : (
+              "Click to navigate"
+            )}
           </div>
         </div>
       </div>

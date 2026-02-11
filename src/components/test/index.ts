@@ -1,4 +1,6 @@
 export * from "./ConfirmModal";
+export * from "./Confetti";
+export * from "./KeyboardShortcutsPanel";
 export * from "./MobileNavOverlay";
 export * from "./MobileNavToggle";
 export * from "./NavigationControls";

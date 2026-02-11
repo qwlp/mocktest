@@ -144,14 +144,14 @@ export function MatchingQuestion({
 
   return (
     <div className="space-y-6">
-      <div className="text-sm text-gray-600 dark:text-dark-text-secondary mb-4">
+      <div className="text-sm text-[var(--color-text-secondary)] mb-4">
         Drag and drop or click to match items from the left column with items
         from the right column.
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-3">
-          <h3 className="font-semibold text-gray-800 dark:text-dark-text mb-4">
+          <h3 className="font-semibold text-[var(--color-text)] mb-4">
             Prompts
           </h3>
           {prompts.map((prompt, index) => {
@@ -167,13 +167,14 @@ export function MatchingQuestion({
                   isDragOver: dragOverTarget === prompt,
                   isCorrect: feedback === "correct",
                   isIncorrect: feedback === "incorrect",
+                  isSubmitted,
                 })}
                 onDragOver={handleDragOver}
                 onDragEnter={(e) => handleDragEnter(e, prompt)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, prompt)}
               >
-                <div className="prose prose-sm max-w-none dark:prose-invert text-gray-800 dark:text-dark-text mb-2">
+                <div className="prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)] mb-2">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {prompt}
                   </ReactMarkdown>
@@ -200,13 +201,13 @@ export function MatchingQuestion({
                 )}
 
                 {feedback === "correct" && (
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-success)] rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
                 )}
 
                 {feedback === "incorrect" && (
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-error)] rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✗</span>
                   </div>
                 )}
@@ -216,7 +217,7 @@ export function MatchingQuestion({
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-semibold text-gray-800 dark:text-dark-text mb-4">
+          <h3 className="font-semibold text-[var(--color-text)] mb-4">
             Answers
           </h3>
           <div className="space-y-2">
@@ -237,8 +238,8 @@ export function MatchingQuestion({
                   ${draggedItem?.content === answer ? "opacity-50 scale-95" : "opacity-100 scale-100"}
                   ${
                     isSubmitted
-                      ? "cursor-default bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-                      : "bg-white dark:bg-dark-surface border-gray-200 dark:border-dark-border hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                      ? "cursor-default bg-[var(--color-surface-elevated)] border-[var(--color-border)]"
+                      : "bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-subtle)]"
                   }
                 `}
                 onClick={() => {
@@ -252,7 +253,7 @@ export function MatchingQuestion({
                   }
                 }}
               >
-                <div className="prose prose-sm max-w-none dark:prose-invert text-gray-800 dark:text-dark-text text-sm">
+                <div className="prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)] text-sm">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {answer}
                   </ReactMarkdown>
@@ -262,7 +263,7 @@ export function MatchingQuestion({
           </div>
 
           {getUnusedAnswers().length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-dark-text-secondary">
+            <div className="text-center py-8 text-[var(--color-text-muted)]">
               All answers have been matched
             </div>
           )}
@@ -270,16 +271,13 @@ export function MatchingQuestion({
       </div>
 
       {showFeedback && (
-        <div className="mt-6 p-4 bg-gray-50 dark:bg-dark-surface rounded-lg">
-          <h4 className="font-semibold text-gray-800 dark:text-dark-text mb-2">
+        <div className="mt-6 p-4 bg-[var(--color-surface-elevated)] rounded-lg border border-[var(--color-border)]">
+          <h4 className="font-semibold text-[var(--color-text)] mb-2">
             Correct Matches:
           </h4>
           <div className="space-y-1 text-sm">
             {matchingPairs.map((pair, index) => (
-              <div
-                key={index}
-                className="text-gray-600 dark:text-dark-text-secondary"
-              >
+              <div key={index} className="text-[var(--color-text-secondary)]">
                 <span className="font-medium">{pair.prompt}</span> →{" "}
                 {pair.answer}
               </div>

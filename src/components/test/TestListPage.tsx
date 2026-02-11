@@ -2,9 +2,82 @@ import React from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { Play, Clock, HelpCircle, Award, ArrowRight } from "lucide-react";
 
 interface TestListPageProps {
   onStartTest: (testId: Id<"tests">) => void;
+}
+
+function TestCard({
+  test,
+  onStart,
+  index,
+}: {
+  test: any;
+  onStart: (id: Id<"tests">) => void;
+  index: number;
+}) {
+  const [isHovered, setIsHovered] = React.useState(false);
+
+  return (
+    <div
+      className="group relative animate-slide-up"
+      style={{ animationDelay: `${index * 0.1}s` }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="card p-6 sm:p-8 transition-all duration-300 hover:shadow-soft-lg">
+        <div />
+
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="badge badge-rose">Test {index + 1}</span>
+              {test.questionCount && (
+                <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
+                  <HelpCircle className="w-3 h-3" />
+                  {test.questionCount} questions
+                </span>
+              )}
+            </div>
+
+            <h2 className="text-2xl font-display font-bold text-[var(--color-text)] mb-2 group-hover:text-[var(--color-primary-light)] transition-colors">
+              {test.name}
+            </h2>
+
+            <p className="text-[var(--color-text-secondary)] leading-relaxed mb-4">
+              {test.description || "I got bored."}
+            </p>
+          </div>
+
+          <div className="flex items-center">
+            <button
+              onClick={() => onStart(test._id)}
+              className="btn btn-primary group/btn whitespace-nowrap"
+            >
+              <Play className="w-4 h-4" />
+              <span>Start Test</span>
+              <ArrowRight
+                className={`w-4 h-4 transition-transform duration-300 ${
+                  isHovered ? "translate-x-1" : ""
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Hover glow effect */}
+        <div
+          className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 0%, rgba(179, 136, 163, 0.1) 0%, transparent 70%)",
+            opacity: isHovered ? 1 : 0,
+          }}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function TestListPage({ onStartTest }: TestListPageProps) {
@@ -12,52 +85,61 @@ export function TestListPage({ onStartTest }: TestListPageProps) {
 
   if (tests === undefined) {
     return (
-      <div className="text-center p-8 text-gray-500 dark:text-dark-text-secondary">
-        Loading tests...
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-12 h-12 border-4 border-[var(--color-border)] border-t-[var(--color-primary)] rounded-full animate-spin" />
+        <p className="text-[var(--color-text-secondary)] font-medium animate-pulse">
+          Loading your tests...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-blue-600 dark:text-dark-primary mb-8 text-justify">
-        Mock Tests for Database Design (If anything is wrong contact
-        @sokpiseththin in telegram) Good luck! More ER Diagrams are coming I'm
-        just lazy
-      </h1>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-4xl">
+      {/* Tests List */}
       {tests.length === 0 ? (
-        <p className="text-center text-gray-600 dark:text-dark-text-secondary">
-          No practice tests available at the moment. Check back later!
-        </p>
+        <div className="text-center py-16 card animate-scale-in">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--color-primary-subtle)] flex items-center justify-center">
+            <HelpCircle className="w-8 h-8 text-[var(--color-primary)]" />
+          </div>
+          <p className="text-[var(--color-text-secondary)] text-lg mb-2">
+            No tests available yet
+          </p>
+          <p className="text-[var(--color-text-muted)] text-sm">
+            Check back later for new content!
+          </p>
+        </div>
       ) : (
-        <ul className="space-y-6">
-          {tests.map((test) => {
-            return (
-              <li
-                key={test._id}
-                className="bg-white dark:bg-dark-surface p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-dark-text mb-1">
-                      {test.name}
-                    </h2>
-                    <p className="text-sm text-gray-500 dark:text-dark-text-secondary mb-3">
-                      {test.description || "No description available."}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => onStartTest(test._id)}
-                    className="px-6 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 dark:bg-dark-primary dark:hover:bg-dark-primary-hover transition-colors"
-                  >
-                    Start Test
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="space-y-6">
+          {tests.map((test, index) => (
+            <TestCard
+              key={test._id}
+              test={test}
+              onStart={onStartTest}
+              index={index}
+            />
+          ))}
+        </div>
       )}
+
+      {/* Footer note */}
+      <div
+        className="mt-12 text-center text-sm text-[var(--color-text-muted)] animate-fade-in"
+        style={{ animationDelay: "0.5s" }}
+      >
+        <p>
+          Questions? Contact{" "}
+          <a
+            href="https://t.me/sokpiseththin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--color-primary)] hover:underline"
+          >
+            @sokpiseththin
+          </a>{" "}
+          on Telegram
+        </p>
+      </div>
     </div>
   );
 }

@@ -37,7 +37,7 @@ export function MobileNavOverlay({
             </h3>
             <button
               onClick={onClose}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-white dark:hover:text-white"
               aria-label="Close navigation"
             >
               <svg

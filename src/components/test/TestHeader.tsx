@@ -10,11 +10,13 @@ export function TestHeader({ test, onExitTest }: TestHeaderProps) {
   return (
     <div className="flex justify-between items-center mb-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-dark-text">
-          {test.name}
-        </h1>
+        {/*
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-dark-text">
+              {test.name}
+              </h1>
+    */}
         {test.description && (
-          <p className="text-gray-600 dark:text-dark-text-secondary mt-1">
+          <p className="text-gray-700 dark:text-white mt-1">
             {test.description}
           </p>
         )}

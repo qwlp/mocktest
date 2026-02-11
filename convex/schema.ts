@@ -9,26 +9,36 @@ const applicationTables = {
   }),
 
   questions: defineTable({
-    testId: v.id("tests"), 
+    testId: v.id("tests"),
     text: v.string(),
     type: v.union(
       v.literal("mcq"),
       v.literal("tf"),
       v.literal("ms"),
       v.literal("matching"),
-      v.literal("fib")
+      v.literal("fib"),
     ),
     options: v.array(v.string()),
     correctAnswers: v.array(v.string()),
     questionId: v.string(),
     // For matching questions
-    matchingPairs: v.optional(v.array(v.object({
-      prompt: v.string(),
-      answer: v.string()
-    }))),
+    matchingPairs: v.optional(
+      v.array(
+        v.object({
+          prompt: v.string(),
+          answer: v.string(),
+        }),
+      ),
+    ),
   })
-  .index("by_questionId", ["questionId"])
-  .index("by_testId", ["testId"]),
+    .index("by_questionId", ["questionId"])
+    .index("by_testId", ["testId"]),
+
+  // Admin configuration - stores admin password hash
+  adminConfig: defineTable({
+    passwordHash: v.string(),
+    createdAt: v.number(),
+  }),
 };
 
 export default defineSchema({

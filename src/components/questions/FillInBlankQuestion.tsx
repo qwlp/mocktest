@@ -61,7 +61,7 @@ export function FillInBlankQuestion({
       <div className="mb-4">
         <label
           htmlFor="fib-input"
-          className="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2"
+          className="block text-sm font-medium text-gray-700 dark:text-white mb-2"
         >
           Type your answer below:
         </label>
@@ -160,7 +160,7 @@ export function FillInBlankQuestion({
             {question.correctAnswers.map((answer, index) => (
               <div
                 key={index}
-                className="text-sm text-gray-600 dark:text-dark-text-secondary"
+                className="text-sm text-gray-600 dark:text-white"
               >
                 • {answer}
               </div>

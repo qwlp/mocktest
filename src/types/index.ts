@@ -1,6 +1,6 @@
 import { Id, Doc } from "../../convex/_generated/dataModel";
 
-export type Page = "list" | "test";
+export type Page = "list" | "test" | "admin";
 
 export type QuestionType = "mcq" | "tf" | "ms" | "matching" | "fib";
 
