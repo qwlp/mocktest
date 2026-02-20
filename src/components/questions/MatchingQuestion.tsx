@@ -116,7 +116,7 @@ export function MatchingQuestion({
   };
 
   const shuffledAnswers = React.useMemo(() => {
-    return [...correctAnswers];
+    return Array.from(new Set(correctAnswers));
   }, [correctAnswers]);
 
   return (
