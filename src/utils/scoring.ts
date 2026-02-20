@@ -42,10 +42,21 @@ function checkMatchingAnswer(
     return false;
   }
 
+  const correctAnswers = correctPairs.map((pair) => pair.answer);
+
   for (const userMatch of userMatches) {
-    const [prompt, answer] = userMatch.split(":");
-    const correctPair = correctPairs.find((pair) => pair.prompt === prompt);
-    if (!correctPair || correctPair.answer !== answer) {
+    const [promptIndexStr, answerNumStr] = userMatch.split(":");
+    const promptIndex = parseInt(promptIndexStr, 10);
+    const answerNum = parseInt(answerNumStr, 10);
+
+    if (isNaN(promptIndex) || isNaN(answerNum)) {
+      return false;
+    }
+
+    const userAnswerText = correctAnswers[answerNum - 1];
+    const correctPair = correctPairs[promptIndex];
+
+    if (!correctPair || correctPair.answer !== userAnswerText) {
       return false;
     }
   }

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MatchingQuestionProps, MatchingPair, DragItem } from "../../types";
-import { getMatchPromptClassName, getMatchAnswerClassName } from "../../utils";
+import { MatchingQuestionProps, MatchingPair } from "../../types";
 
 export function MatchingQuestion({
   question,
@@ -11,262 +10,209 @@ export function MatchingQuestion({
   showFeedback = false,
   isSubmitted = false,
 }: MatchingQuestionProps) {
-  const [matches, setMatches] = useState<Record<string, string>>({});
-  const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
-  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
-  const [shuffledAnswers, setShuffledAnswers] = useState<string[]>([]);
-  const dragCounter = useRef(0);
+  const [inputs, setInputs] = useState<Record<number, string>>({});
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const matchingPairs: MatchingPair[] = question.matchingPairs || [];
   const prompts = matchingPairs.map((pair) => pair.prompt);
   const correctAnswers = matchingPairs.map((pair) => pair.answer);
 
   useEffect(() => {
-    const shuffled = [...correctAnswers].sort(() => Math.random() - 0.5);
-    setShuffledAnswers(shuffled);
-  }, [question._id]);
-
-  useEffect(() => {
     if (userAnswer && userAnswer.length > 0) {
-      const matchesFromAnswer: Record<string, string> = {};
+      const newInputs: Record<number, string> = {};
       userAnswer.forEach((pair) => {
-        const [prompt, answer] = pair.split(":");
-        if (prompt && answer) {
-          matchesFromAnswer[prompt] = answer;
+        const [promptIndex, answerNum] = pair.split(":");
+        if (promptIndex && answerNum) {
+          newInputs[parseInt(promptIndex, 10)] = answerNum;
         }
       });
-      setMatches(matchesFromAnswer);
+      setInputs(newInputs);
     } else {
-      setMatches({});
+      setInputs({});
     }
   }, [userAnswer]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      const matchArray = Object.entries(matches).map(
-        ([prompt, answer]) => `${prompt}:${answer}`,
-      );
-      onAnswerChange(matchArray);
+      const answerArray = Object.entries(inputs)
+        .filter(([, value]) => value.trim() !== "")
+        .map(([promptIndex, answerNum]) => `${promptIndex}:${answerNum}`);
+      onAnswerChange(answerArray);
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [matches, onAnswerChange]);
+  }, [inputs, onAnswerChange]);
 
-  const handleDragStart = (e: React.DragEvent, item: DragItem) => {
-    if (isSubmitted) return;
-    setDraggedItem(item);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", JSON.stringify(item));
-  };
+  const handleInputChange = useCallback(
+    (promptIndex: number, value: string) => {
+      if (isSubmitted) return;
 
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-    setDragOverTarget(null);
-    dragCounter.current = 0;
-  };
+      const cleaned = value.replace(/[^0-9]/g, "");
+      setInputs((prev) => ({
+        ...prev,
+        [promptIndex]: cleaned,
+      }));
+    },
+    [isSubmitted],
+  );
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-  };
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, promptIndex: number, totalPrompts: number) => {
+      if (isSubmitted) return;
 
-  const handleDragEnter = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current++;
-    setDragOverTarget(targetId);
-  };
+      const currentValue = inputs[promptIndex] || "";
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current--;
-    if (dragCounter.current === 0) {
-      setDragOverTarget(null);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, targetPrompt: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current = 0;
-    setDragOverTarget(null);
-
-    if (isSubmitted) return;
-
-    try {
-      const item: DragItem = JSON.parse(e.dataTransfer.getData("text/plain"));
-      if (item.type === "answer") {
-        addMatch(item.content, targetPrompt);
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault();
+          if (promptIndex > 0) {
+            inputRefs.current[promptIndex - 1]?.focus();
+          }
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          if (promptIndex < totalPrompts - 1) {
+            inputRefs.current[promptIndex + 1]?.focus();
+          }
+          break;
+        case "Enter":
+        case "Tab":
+          e.preventDefault();
+          if (currentValue !== "") {
+            const nextIndex = Math.min(promptIndex + 1, totalPrompts - 1);
+            inputRefs.current[nextIndex]?.focus();
+          }
+          break;
+        case "Backspace":
+          if (currentValue === "" && promptIndex > 0) {
+            inputRefs.current[promptIndex - 1]?.focus();
+          }
+          break;
+        case "Escape":
+          e.preventDefault();
+          inputRefs.current[promptIndex]?.blur();
+          break;
       }
-    } catch (error) {
-      console.error("Error parsing drag data:", error);
+    },
+    [inputs, isSubmitted],
+  );
+
+  const getFeedback = (promptIndex: number, answerNum: string) => {
+    if (!showFeedback || !answerNum) return null;
+
+    const answerIndex = parseInt(answerNum, 10) - 1;
+    const correctAnswer = correctAnswers[promptIndex];
+    const userAnswerText = shuffledAnswers[answerIndex];
+
+    if (userAnswerText === correctAnswer) {
+      return "correct";
     }
+    return "incorrect";
   };
 
-  const addMatch = useCallback((answer: string, prompt: string) => {
-    setMatches((prevMatches) => {
-      const newMatches = { ...prevMatches };
-      Object.keys(newMatches).forEach((key) => {
-        if (newMatches[key] === answer) {
-          delete newMatches[key];
-        }
-      });
-      newMatches[prompt] = answer;
-      return newMatches;
-    });
-  }, []);
-
-  const handleRemoveMatch = (prompt: string) => {
-    if (isSubmitted) return;
-
-    setMatches((prevMatches) => {
-      const newMatches = { ...prevMatches };
-      delete newMatches[prompt];
-      return newMatches;
-    });
+  const getAnswerByNumber = (num: number): string => {
+    const index = num - 1;
+    return shuffledAnswers[index] || "";
   };
 
-  const getMatchFeedback = (prompt: string, answer: string) => {
-    if (!showFeedback) return null;
-
-    const correctPair = matchingPairs.find((pair) => pair.prompt === prompt);
-    const isCorrect = correctPair?.answer === answer;
-
-    return isCorrect ? "correct" : "incorrect";
-  };
-
-  const getUnusedAnswers = () => {
-    const usedAnswers = Object.values(matches);
-    return shuffledAnswers.filter((answer) => !usedAnswers.includes(answer));
-  };
+  const shuffledAnswers = React.useMemo(() => {
+    return [...correctAnswers];
+  }, [correctAnswers]);
 
   return (
     <div className="space-y-6">
       <div className="text-sm text-[var(--color-text-secondary)] mb-4">
-        Drag and drop or click to match items from the left column with items
-        from the right column.
+        Type the number of the matching answer (1-{shuffledAnswers.length}). Use
+        arrow keys to navigate, Enter/Tab to move to the next field.
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-3">
-          <h3 className="font-semibold text-[var(--color-text)] mb-4">
-            Prompts
-          </h3>
-          {prompts.map((prompt, index) => {
-            const matchedAnswer = matches[prompt];
-            const feedback = matchedAnswer
-              ? getMatchFeedback(prompt, matchedAnswer)
-              : null;
+      <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex-1">
+          <div className="flex items-center gap-4 pb-2 border-b border-[var(--color-border)] mb-4">
+            <div className="w-6" />
+            <span className="font-semibold text-[var(--color-text)]">
+              Question
+            </span>
+          </div>
 
-            return (
-              <div
-                key={`prompt-${index}`}
-                className={getMatchPromptClassName({
-                  isDragOver: dragOverTarget === prompt,
-                  isCorrect: feedback === "correct",
-                  isIncorrect: feedback === "incorrect",
-                  isSubmitted,
-                })}
-                onDragOver={handleDragOver}
-                onDragEnter={(e) => handleDragEnter(e, prompt)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, prompt)}
-              >
-                <div className="prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)] mb-2">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {prompt}
-                  </ReactMarkdown>
+          <div className="space-y-3">
+            {prompts.map((prompt, promptIndex) => {
+              const inputValue = inputs[promptIndex] || "";
+              const feedback = showFeedback
+                ? getFeedback(promptIndex, inputValue)
+                : null;
+
+              let inputClassName =
+                "w-12 h-10 px-2 text-center rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] font-medium";
+
+              if (isSubmitted) {
+                inputClassName += " cursor-not-allowed";
+                if (feedback === "correct") {
+                  inputClassName =
+                    "w-12 h-10 px-2 text-center rounded-lg border-2 bg-[var(--color-success-light)] border-[var(--color-success)] text-[var(--color-text)] font-medium";
+                } else if (feedback === "incorrect") {
+                  inputClassName =
+                    "w-12 h-10 px-2 text-center rounded-lg border-2 bg-[var(--color-error-light)] border-[var(--color-error)] text-[var(--color-text)] font-medium";
+                }
+              }
+
+              return (
+                <div key={promptIndex} className="flex items-start gap-3">
+                  <div className="flex items-center gap-2 shrink-0 w-20">
+                    <span className="font-medium text-[var(--color-text)]">
+                      Q{promptIndex + 1}
+                    </span>
+                    <input
+                      ref={(el) => {
+                        inputRefs.current[promptIndex] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={inputValue}
+                      onChange={(e) =>
+                        handleInputChange(promptIndex, e.target.value)
+                      }
+                      onKeyDown={(e) =>
+                        handleKeyDown(e, promptIndex, prompts.length)
+                      }
+                      disabled={isSubmitted}
+                      className={inputClassName}
+                      aria-label={`Question ${promptIndex + 1} answer`}
+                    />
+                  </div>
+                  <div className="flex-1 prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)] pt-2">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {prompt}
+                    </ReactMarkdown>
+                  </div>
                 </div>
-
-                {matchedAnswer && (
-                  <div
-                    className={getMatchAnswerClassName({
-                      isCorrect: feedback === "correct",
-                      isIncorrect: feedback === "incorrect",
-                    })}
-                  >
-                    <span className="text-sm font-medium">{matchedAnswer}</span>
-                    {!isSubmitted && (
-                      <button
-                        onClick={() => handleRemoveMatch(prompt)}
-                        className="ml-2 text-xs opacity-70 hover:opacity-100 transition-opacity"
-                        aria-label={`Remove match for ${prompt}`}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {feedback === "correct" && (
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-success)] rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                )}
-
-                {feedback === "incorrect" && (
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-error)] rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✗</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
-        <div className="space-y-3">
-          <h3 className="font-semibold text-[var(--color-text)] mb-4">
+        <div className="lg:w-80 shrink-0">
+          <div className="font-semibold text-[var(--color-text)] pb-2 border-b border-[var(--color-border)] mb-4">
             Answers
-          </h3>
+          </div>
           <div className="space-y-2">
-            {getUnusedAnswers().map((answer, index) => (
+            {shuffledAnswers.map((answer, index) => (
               <div
-                key={`answer-${index}`}
-                draggable={!isSubmitted}
-                onDragStart={(e) =>
-                  handleDragStart(e, {
-                    id: `answer-${index}`,
-                    content: answer,
-                    type: "answer",
-                  })
-                }
-                onDragEnd={handleDragEnd}
-                className={`
-                  p-3 rounded-lg border cursor-pointer transition-all duration-200
-                  ${draggedItem?.content === answer ? "opacity-50 scale-95" : "opacity-100 scale-100"}
-                  ${
-                    isSubmitted
-                      ? "cursor-default bg-[var(--color-surface-elevated)] border-[var(--color-border)]"
-                      : "bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-subtle)]"
-                  }
-                `}
-                onClick={() => {
-                  if (!isSubmitted) {
-                    const unmatchedPrompt = prompts.find(
-                      (prompt) => !matches[prompt],
-                    );
-                    if (unmatchedPrompt) {
-                      addMatch(answer, unmatchedPrompt);
-                    }
-                  }
-                }}
+                key={index}
+                className="p-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]"
               >
-                <div className="prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)] text-sm">
+                <span className="font-medium text-[var(--color-text)] mr-2">
+                  {index + 1}.
+                </span>
+                <span className="text-[var(--color-text)]">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {answer}
                   </ReactMarkdown>
-                </div>
+                </span>
               </div>
             ))}
           </div>
-
-          {getUnusedAnswers().length === 0 && (
-            <div className="text-center py-8 text-[var(--color-text-muted)]">
-              All answers have been matched
-            </div>
-          )}
         </div>
       </div>
 

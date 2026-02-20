@@ -104,7 +104,7 @@ Multiple correct answers possible.
 
 ### 4. Matching (MATCHING)
 
-Match prompts with answers by dragging and dropping.
+Match prompts with answers by typing the corresponding number. Answers can be reused for multiple prompts (many-to-many matching).
 
 ```json
 {
@@ -127,6 +127,13 @@ Match prompts with answers by dragging and dropping.
 - At least 2 matching pairs
 - Each pair needs both `prompt` and `answer`
 - `options` and `correctAnswers` should be empty arrays
+
+**How it works:**
+
+- Answers are displayed in column B and numbered 1, 2, 3, etc.
+- Type the number of the matching answer in the input box for each prompt
+- The same answer number can be used for multiple prompts (many-to-many)
+- Keyboard navigation: `↑`/`↓` to move between fields, `Enter`/`Tab` to advance
 
 ### 5. Fill-in-the-Blank (FIB)
 
@@ -301,8 +308,9 @@ Include common variations for fill-in-the-blank questions:
 ### Matching Questions
 
 - Keep prompts and answers concise
-- Ensure there's a clear 1:1 relationship
+- Answers can be reused for multiple prompts (many-to-many matching supported)
 - Use 4-8 pairs for optimal UX
+- Consider if your matching scenario requires unique or shared answers
 
 ## Common Errors to Avoid
 
