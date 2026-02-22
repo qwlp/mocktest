@@ -29,6 +29,7 @@ interface UseTestStateReturn {
 }
 
 export function useTestState({
+  testId,
   questions,
   onExitTest,
 }: UseTestStateProps): UseTestStateReturn {
@@ -44,7 +45,7 @@ export function useTestState({
     setIsSubmitted(false);
     setShowFeedback(false);
     setCurrentQuestionIndex(0);
-  }, [questions]);
+  }, [testId]);
 
   const currentQuestion = questions?.[currentQuestionIndex];
   const currentUserAnswer = userAnswers.find(
