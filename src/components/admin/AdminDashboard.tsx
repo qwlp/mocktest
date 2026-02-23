@@ -555,7 +555,7 @@ export function AdminDashboard({ onBack }: { onBack: () => void }) {
                                 key={i}
                                 className={`text-xs px-2 py-1 rounded ${
                                   question.correctAnswers.includes(option)
-                                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                                    ? "bg-[var(--color-success-light)] dark:bg-[rgba(184,90,125,0.2)] text-[var(--color-success)] dark:text-[#d48fa8]"
                                     : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
                                 }`}
                               >
@@ -1182,11 +1182,11 @@ function ImportTestPageView({ onBack }: { onBack: () => void }) {
         {validationResult && (
           <div className="space-y-4">
             <div
-              className={`p-4 rounded-lg border ${validationResult.valid ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"}`}
+              className={`p-4 rounded-lg border ${validationResult.valid ? "bg-[var(--color-success-light)] dark:bg-[rgba(184,90,125,0.15)] border-[var(--color-success)] dark:border-[#b85a7d]" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"}`}
             >
               <div className="flex items-center gap-2">
                 <span
-                  className={`font-semibold ${validationResult.valid ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"}`}
+                  className={`font-semibold ${validationResult.valid ? "text-[var(--color-success)] dark:text-[#d48fa8]" : "text-red-800 dark:text-red-200"}`}
                 >
                   {validationResult.valid
                     ? "Validation Passed"

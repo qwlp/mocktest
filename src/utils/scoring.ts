@@ -109,3 +109,18 @@ export function calculateProgress(
 ): number {
   return Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100);
 }
+
+export function isQuestionCorrect(
+  question: Doc<"questions">,
+  userAnswer: UserAnswer | undefined,
+): boolean {
+  if (!userAnswer) return false;
+
+  if (question.type === "matching") {
+    return checkMatchingAnswer(userAnswer, question.matchingPairs || []);
+  } else if (question.type === "fib") {
+    return checkFillInBlankAnswer(userAnswer, question.correctAnswers);
+  } else {
+    return checkStandardAnswer(userAnswer, question.correctAnswers);
+  }
+}

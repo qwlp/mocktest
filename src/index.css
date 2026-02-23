@@ -23,8 +23,8 @@
   --color-border-strong: #d4cdd4;
 
   /* Semantic Colors */
-  --color-success: #10b981;
-  --color-success-light: #d1fae5;
+  --color-success: #be185d;
+  --color-success-light: rgba(190, 24, 93, 0.1);
   --color-warning: #f59e0b;
   --color-warning-light: #fef3c7;
   --color-error: #ef4444;
@@ -57,6 +57,14 @@
   --color-primary-hover: #b85a7d;
   --color-primary-light: #d48fa8;
   --color-primary-subtle: rgba(157, 74, 106, 0.2);
+
+  /* Semantic Colors - Dark Pink for success */
+  --color-success: #b85a7d;
+  --color-success-light: rgba(184, 90, 125, 0.2);
+
+  /* Error colors for dark mode - better contrast */
+  --color-error: #f87171;
+  --color-error-light: rgba(248, 113, 113, 0.15);
 
   --color-border: #3e3942;
   --color-border-strong: #4a4450;
@@ -353,7 +361,7 @@ body {
 }
 
 .dark .option-card.correct {
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(184, 90, 125, 0.15);
 }
 
 .option-card.incorrect {
@@ -500,12 +508,12 @@ body {
 
 .badge-success {
   background-color: var(--color-success-light);
-  color: #065f46;
+  color: var(--color-success);
 }
 
 .dark .badge-success {
-  background-color: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  background-color: rgba(184, 90, 125, 0.2);
+  color: #d48fa8;
 }
 
 .badge-warning {

@@ -214,6 +214,7 @@ export function PracticeTestPage({
         getQuestionStatus={getQuestionStatusForIndex}
         isSubmitted={isSubmitted}
         onClose={() => setIsMobileNavOpen(false)}
+        userAnswers={userAnswers}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -225,6 +226,7 @@ export function PracticeTestPage({
             onQuestionSelect={handleQuestionSelect}
             getQuestionStatus={getQuestionStatusForIndex}
             isSubmitted={isSubmitted}
+            userAnswers={userAnswers}
           />
         </div>
 
@@ -338,7 +340,6 @@ export function PracticeTestPage({
               isSubmitted={isSubmitted}
               onPrevious={handlePrevQuestion}
               onNext={handleNextQuestion}
-              onSubmit={() => setShowConfirmModal(true)}
             />
           </div>
         </div>

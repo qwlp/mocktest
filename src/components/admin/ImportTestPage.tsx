@@ -308,14 +308,14 @@ export function ImportTestPage({ onBack }: ImportTestPageProps) {
             <div
               className={`p-4 rounded-lg border ${
                 validationResult.valid
-                  ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                  ? "bg-[var(--color-success-light)] dark:bg-[rgba(184,90,125,0.15)] border-[var(--color-success)] dark:border-[#b85a7d]"
                   : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
               }`}
             >
               <div className="flex items-center gap-2">
                 {validationResult.valid ? (
                   <svg
-                    className="w-5 h-5 text-green-600 dark:text-green-400"
+                    className="w-5 h-5 text-[var(--color-success)] dark:text-[#d48fa8]"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -341,7 +341,7 @@ export function ImportTestPage({ onBack }: ImportTestPageProps) {
                 <span
                   className={`font-semibold ${
                     validationResult.valid
-                      ? "text-green-800 dark:text-green-200"
+                      ? "text-[var(--color-success)] dark:text-[#d48fa8]"
                       : "text-red-800 dark:text-red-200"
                   }`}
                 >

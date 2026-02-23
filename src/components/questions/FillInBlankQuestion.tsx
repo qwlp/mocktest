@@ -51,7 +51,7 @@ export function FillInBlankQuestion({
     if (!showFeedback || !inputValue.trim()) return "dark:text-dark-text";
 
     return isCorrect
-      ? "text-green-800 dark:text-green-200"
+      ? "text-[var(--color-success)] dark:text-[#d48fa8]"
       : "text-red-800 dark:text-red-200";
   };
 
@@ -81,7 +81,7 @@ export function FillInBlankQuestion({
           {showFeedback && inputValue.trim() && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               {isCorrect ? (
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-[var(--color-success)] rounded-full flex items-center justify-center">
                   <svg
                     className="w-4 h-4 text-white"
                     fill="currentColor"
@@ -116,7 +116,7 @@ export function FillInBlankQuestion({
         {showFeedback && inputValue.trim() && (
           <div className="mt-2">
             {isCorrect ? (
-              <p className="text-sm text-green-600 dark:text-green-400 flex items-center">
+              <p className="text-sm text-[var(--color-success)] dark:text-[#d48fa8] flex items-center">
                 <svg
                   className="w-4 h-4 mr-1"
                   fill="currentColor"

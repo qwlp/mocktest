@@ -36,32 +36,18 @@ export function ProgressBar({
             className="h-full rounded-full transition-all duration-500 ease-out relative"
             style={{
               width: `${progress}%`,
-              backgroundColor: "var(--color-primary)",
+              background: `linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%)`,
             }}
           >
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+            {/* Subtle shimmer effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
           </div>
         </div>
 
-        {/* Progress markers */}
-        <div className="absolute top-0 left-0 right-0 h-full flex justify-between px-0.5">
-          {Array.from({ length: Math.min(totalQuestions, 20) }).map((_, i) => {
-            const position = ((i + 1) / totalQuestions) * 100;
-            return (
-              <div
-                key={i}
-                className="w-0.5 h-full rounded-full transition-colors duration-300"
-                style={{
-                  backgroundColor:
-                    progress >= position
-                      ? "rgba(255,255,255,0.3)"
-                      : "transparent",
-                }}
-              />
-            );
-          })}
-        </div>
+        {/* Subtle gradient overlay for depth */}
+        <div className="absolute top-0 left-0 right-0 h-full rounded-full bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Doc } from "../../../convex/_generated/dataModel";
-import { QuestionStatus } from "../../types";
-import { Check, ChevronLeft } from "lucide-react";
+import { QuestionStatus, UserAnswer } from "../../types";
+import { Check, X, ChevronLeft } from "lucide-react";
+import { isQuestionCorrect } from "../../utils";
 
 interface QuestionNavProps {
   questions: Doc<"questions">[];
@@ -9,6 +10,7 @@ interface QuestionNavProps {
   onQuestionSelect: (index: number) => void;
   getQuestionStatus: (index: number) => QuestionStatus;
   isSubmitted: boolean;
+  userAnswers?: UserAnswer[];
 }
 
 function QuestionTypeBadge({ type }: { type: string }) {
@@ -33,6 +35,7 @@ export function QuestionNav({
   onQuestionSelect,
   getQuestionStatus,
   isSubmitted,
+  userAnswers = [],
 }: QuestionNavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -89,6 +92,13 @@ export function QuestionNav({
               const status = getQuestionStatus(index);
               const isActive = currentQuestionIndex === index;
               const isAnswered = status === "answered";
+              const userAnswer = userAnswers.find(
+                (a) => a.questionId === q._id,
+              );
+              const correct =
+                isSubmitted && isAnswered
+                  ? isQuestionCorrect(q, userAnswer)
+                  : null;
 
               return (
                 <button
@@ -103,17 +113,31 @@ export function QuestionNav({
                         : ""
                     }
                     ${
-                      isAnswered
-                        ? "bg-[var(--color-success)] text-white shadow-md"
-                        : isActive
-                          ? "bg-[var(--color-primary)] text-white shadow-md"
-                          : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:opacity-80"
+                      isSubmitted && isAnswered
+                        ? correct
+                          ? "bg-[#d48fa8] text-white shadow-md"
+                          : "bg-[#7d4e6d] text-white shadow-md"
+                        : isAnswered
+                          ? "bg-[var(--color-success)] text-white shadow-md"
+                          : isActive
+                            ? "bg-[var(--color-primary)] text-white shadow-md"
+                            : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:opacity-80"
                     }
                   `}
                   aria-label={`Go to question ${index + 1}`}
                   aria-current={isActive ? "true" : "false"}
                 >
-                  {isAnswered ? <Check className="w-4 h-4" /> : index + 1}
+                  {isSubmitted && isAnswered ? (
+                    correct ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <X className="w-4 h-4" />
+                    )
+                  ) : isAnswered ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    index + 1
+                  )}
 
                   {/* Active indicator */}
                   {isActive && (
@@ -136,6 +160,11 @@ export function QuestionNav({
             const status = getQuestionStatus(index);
             const isActive = currentQuestionIndex === index;
             const isAnswered = status === "answered";
+            const userAnswer = userAnswers.find((a) => a.questionId === q._id);
+            const correct =
+              isSubmitted && isAnswered
+                ? isQuestionCorrect(q, userAnswer)
+                : null;
 
             return (
               <button
@@ -145,15 +174,25 @@ export function QuestionNav({
                   w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
                   transition-all duration-200
                   ${
-                    isAnswered
-                      ? "bg-[var(--color-success)] text-white"
-                      : isActive
-                        ? "bg-[var(--color-primary)] text-white"
-                        : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
+                    isSubmitted && isAnswered
+                      ? correct
+                        ? "bg-[#d48fa8] text-white"
+                        : "bg-[#7d4e6d] text-white"
+                      : isAnswered
+                        ? "bg-[var(--color-success)] text-white"
+                        : isActive
+                          ? "bg-[var(--color-primary)] text-white"
+                          : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
                   }
                 `}
               >
-                {isAnswered ? "✓" : index + 1}
+                {isSubmitted && isAnswered
+                  ? correct
+                    ? "✓"
+                    : "✗"
+                  : isAnswered
+                    ? "✓"
+                    : index + 1}
               </button>
             );
           })}

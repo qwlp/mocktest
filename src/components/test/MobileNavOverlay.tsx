@@ -1,7 +1,7 @@
 import React from "react";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { QuestionNav } from "../navigation/QuestionNav";
-import { QuestionStatus } from "../../types";
+import { QuestionStatus, UserAnswer } from "../../types";
 
 interface MobileNavOverlayProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface MobileNavOverlayProps {
   getQuestionStatus: (index: number) => QuestionStatus;
   isSubmitted: boolean;
   onClose: () => void;
+  userAnswers?: UserAnswer[];
 }
 
 export function MobileNavOverlay({
@@ -21,6 +22,7 @@ export function MobileNavOverlay({
   getQuestionStatus,
   isSubmitted,
   onClose,
+  userAnswers = [],
 }: MobileNavOverlayProps) {
   if (!isOpen) return null;
 
@@ -63,6 +65,7 @@ export function MobileNavOverlay({
             onQuestionSelect={onQuestionSelect}
             getQuestionStatus={getQuestionStatus}
             isSubmitted={isSubmitted}
+            userAnswers={userAnswers}
           />
         </div>
       </div>
