@@ -6,6 +6,7 @@ export * from "./MobileNavToggle";
 export * from "./NavigationControls";
 export * from "./PracticeTestPage";
 export * from "./ProgressBar";
+export * from "./ResumeDialog";
 export * from "./ScoreDisplay";
 export * from "./TestHeader";
 export * from "./TestListPage";

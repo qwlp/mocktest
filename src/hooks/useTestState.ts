@@ -2,11 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 import { Id, Doc } from "../../convex/_generated/dataModel";
 import { UserAnswer } from "../types";
 import { calculateScore, getQuestionStatus } from "../utils";
+import {
+  saveTestProgress,
+  clearTestProgress,
+  SavedTestProgress,
+} from "../lib/testStorage";
 
 interface UseTestStateProps {
   testId: Id<"tests">;
   questions: Doc<"questions">[] | undefined;
   onExitTest: () => void;
+  userId: string | null;
+  savedProgress: SavedTestProgress | null;
 }
 
 interface UseTestStateReturn {
@@ -32,20 +39,33 @@ export function useTestState({
   testId,
   questions,
   onExitTest,
+  userId,
+  savedProgress,
 }: UseTestStateProps): UseTestStateReturn {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(() => {
+    return savedProgress?.currentQuestionIndex ?? 0;
+  });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
+  const [userAnswers, setUserAnswers] = useState<UserAnswer[]>(() => {
+    return savedProgress?.userAnswers ?? [];
+  });
 
   useEffect(() => {
-    setUserAnswers([]);
+    setUserAnswers(savedProgress?.userAnswers ?? []);
     setIsSubmitted(false);
     setShowFeedback(false);
-    setCurrentQuestionIndex(0);
-  }, [testId]);
+    setCurrentQuestionIndex(savedProgress?.currentQuestionIndex ?? 0);
+  }, [testId, savedProgress]);
+
+  // Auto-save progress to localStorage on every answer change
+  useEffect(() => {
+    if (userId && !isSubmitted) {
+      saveTestProgress(testId, userId, userAnswers, currentQuestionIndex);
+    }
+  }, [userAnswers, currentQuestionIndex, testId, userId, isSubmitted]);
 
   const currentQuestion = questions?.[currentQuestionIndex];
   const currentUserAnswer = userAnswers.find(
@@ -100,7 +120,11 @@ export function useTestState({
   const handleSubmitTest = useCallback(() => {
     setIsSubmitted(true);
     setShowFeedback(true);
-  }, []);
+    // Clear saved progress on submit
+    if (userId) {
+      clearTestProgress(testId, userId);
+    }
+  }, [testId, userId]);
 
   const handleExitTest = useCallback(() => {
     setUserAnswers([]);

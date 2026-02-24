@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useQuery } from "convex/react";
@@ -18,6 +18,13 @@ import { ScoreDisplay } from "./ScoreDisplay";
 import { ConfirmModal } from "./ConfirmModal";
 import { NavigationControls } from "./NavigationControls";
 import { Confetti } from "./Confetti";
+import { ResumeDialog } from "./ResumeDialog";
+import {
+  loadTestProgress,
+  clearTestProgress,
+  SavedTestProgress,
+  cleanupExpiredProgress,
+} from "../../lib/testStorage";
 import {
   KeyboardShortcutsPanel,
   KeyboardShortcutsButton,
@@ -37,7 +44,41 @@ export function PracticeTestPage({
 }: PracticeTestPageProps) {
   const test = useQuery(api.practiceTest.getTest, { testId });
   const questions = useQuery(api.practiceTest.getQuestions, { testId });
+  const user = useQuery(api.auth.loggedInUser);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [savedProgress, setSavedProgress] = useState<SavedTestProgress | null>(
+    null,
+  );
+
+  const userId = user?._id?.toString() || null;
+
+  // Check for saved progress on mount
+  useEffect(() => {
+    // Clean up any expired progress
+    cleanupExpiredProgress();
+
+    if (userId) {
+      const progress = loadTestProgress(testId, userId);
+      if (progress) {
+        setSavedProgress(progress);
+        setShowResumeDialog(true);
+      }
+    }
+  }, [testId, userId]);
+
+  const handleResume = () => {
+    setShowResumeDialog(false);
+    // Progress is already loaded via savedProgress state
+  };
+
+  const handleStartFresh = () => {
+    if (userId) {
+      clearTestProgress(testId, userId);
+    }
+    setSavedProgress(null);
+    setShowResumeDialog(false);
+  };
 
   const {
     userAnswers,
@@ -55,7 +96,7 @@ export function PracticeTestPage({
     handleSubmitTest,
     handleExitTest,
     getCurrentAnswerArray,
-  } = useTestState({ testId, questions, onExitTest });
+  } = useTestState({ testId, questions, onExitTest, userId, savedProgress });
 
   const currentQuestion = questions?.[currentQuestionIndex];
   const currentQuestionType = currentQuestion?.type as QuestionType;
@@ -352,6 +393,17 @@ export function PracticeTestPage({
         currentQuestionType={currentQuestionType}
         onJumpToType={handleJumpToType}
       />
+
+      {/* Resume Dialog */}
+      {questions && (
+        <ResumeDialog
+          isOpen={showResumeDialog}
+          onResume={handleResume}
+          onStartFresh={handleStartFresh}
+          savedQuestionIndex={savedProgress?.currentQuestionIndex ?? 0}
+          totalQuestions={questions.length}
+        />
+      )}
     </div>
   );
 }
