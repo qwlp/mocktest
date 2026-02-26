@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useQuery } from "convex/react";
@@ -53,6 +59,9 @@ export function PracticeTestPage({
 
   const userId = user?._id?.toString() || null;
 
+  // Store a random seed for this session - generated once for new sessions
+  const sessionSeedRef = useRef<string | null>(null);
+
   // Deterministic shuffle function using a simple seeded random
   const seededShuffle = useCallback(<T,>(array: T[], seed: string): T[] => {
     // Create a simple hash from the seed string
@@ -79,6 +88,11 @@ export function PracticeTestPage({
   const shuffledMatchingOrders = useMemo(() => {
     if (!questions) return new Map<string, string[]>();
 
+    // Generate a random seed for new sessions (no saved progress)
+    if (!savedProgress && !sessionSeedRef.current) {
+      sessionSeedRef.current = Math.random().toString(36).substring(2, 15);
+    }
+
     const newShuffledOrders = new Map<string, string[]>();
     questions.forEach((question) => {
       if (question.type === "matching" && question.matchingPairs) {
@@ -88,21 +102,21 @@ export function PracticeTestPage({
         if (savedOrder && savedOrder.length > 0) {
           newShuffledOrders.set(question._id, savedOrder);
         } else {
-          // Generate new shuffled order (deterministic based on question ID + test ID)
+          // Generate new shuffled order using session seed (random per session)
           const correctAnswers = question.matchingPairs.map(
             (pair) => pair.answer,
           );
           const uniqueAnswers = Array.from(new Set(correctAnswers));
-          // Use a seeded shuffle based on question ID for consistency
+          // Use session seed so it's random per session but stable within session
           newShuffledOrders.set(
             question._id,
-            seededShuffle(uniqueAnswers, `${testId}-${question._id}`),
+            seededShuffle(uniqueAnswers, sessionSeedRef.current!),
           );
         }
       }
     });
     return newShuffledOrders;
-  }, [questions, testId, savedProgress, seededShuffle]);
+  }, [questions, savedProgress, seededShuffle]);
 
   // Check for saved progress on mount
   useEffect(() => {
@@ -128,6 +142,7 @@ export function PracticeTestPage({
       clearTestProgress(testId, userId);
     }
     setSavedProgress(null);
+    sessionSeedRef.current = null; // Reset to generate new random shuffle
     setShowResumeDialog(false);
   };
 
