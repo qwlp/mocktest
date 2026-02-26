@@ -206,6 +206,28 @@ function validateQuestion(question: any, index: number): string[] {
             }
           });
         }
+        if (question.matchingAnswers !== undefined) {
+          if (!Array.isArray(question.matchingAnswers)) {
+            errors.push(
+              `Question ${questionNum} (Matching): "matchingAnswers" must be an array`,
+            );
+          } else if (question.matchingAnswers.length === 0) {
+            errors.push(
+              `Question ${questionNum} (Matching): "matchingAnswers" cannot be empty if provided`,
+            );
+          } else {
+            const pairs: { answer: string }[] = question.matchingPairs || [];
+            const uniquePairAnswers = [...new Set(pairs.map((p) => p.answer))];
+            const missingAnswers = uniquePairAnswers.filter(
+              (answer) => !question.matchingAnswers.includes(answer),
+            );
+            if (missingAnswers.length > 0) {
+              errors.push(
+                `Question ${questionNum} (Matching): All answers from matchingPairs must be included in matchingAnswers. Missing: ${missingAnswers.join(", ")}`,
+              );
+            }
+          }
+        }
         break;
 
       case "fib":
@@ -328,6 +350,7 @@ export const importTestsFromJson = mutation({
             correctAnswers: question.correctAnswers,
             questionId: question.id,
             matchingPairs: question.matchingPairs,
+            matchingAnswers: question.matchingAnswers,
           });
         }
 
@@ -464,6 +487,7 @@ export const addQuestion = mutation({
         }),
       ),
     ),
+    matchingAnswers: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     // Generate a unique question ID
@@ -486,6 +510,7 @@ export const addQuestion = mutation({
       correctAnswers: args.correctAnswers,
       questionId: `q${newId}`,
       matchingPairs: args.matchingPairs,
+      matchingAnswers: args.matchingAnswers,
     });
     return questionId;
   },
@@ -513,6 +538,7 @@ export const updateQuestion = mutation({
         }),
       ),
     ),
+    matchingAnswers: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.questionId, {
@@ -521,6 +547,7 @@ export const updateQuestion = mutation({
       options: args.options || [],
       correctAnswers: args.correctAnswers,
       matchingPairs: args.matchingPairs,
+      matchingAnswers: args.matchingAnswers,
     });
     return { success: true };
   },

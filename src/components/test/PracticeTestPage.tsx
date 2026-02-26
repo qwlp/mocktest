@@ -84,9 +84,13 @@ export function PracticeTestPage({
   }, []);
 
   // Store shuffled matching answers per question ID - computed once when questions load
-  // Use useMemo to ensure stable computation, avoiding the race condition from useEffect
-  const shuffledMatchingOrders = useMemo(() => {
-    if (!questions) return new Map<string, string[]>();
+  const [shuffledMatchingOrders, setShuffledMatchingOrders] = useState<
+    Map<string, string[]>
+  >(new Map());
+
+  // Initialize shuffled matching orders when questions load
+  useEffect(() => {
+    if (!questions) return;
 
     // Generate a random seed for new sessions (no saved progress)
     if (!savedProgress && !sessionSeedRef.current) {
@@ -102,20 +106,40 @@ export function PracticeTestPage({
         if (savedOrder && savedOrder.length > 0) {
           newShuffledOrders.set(question._id, savedOrder);
         } else {
-          // Generate new shuffled order using session seed (random per session)
+          // Build answers list: use matchingAnswers as base, ensure all correct answers are included
           const correctAnswers = question.matchingPairs.map(
             (pair) => pair.answer,
           );
-          const uniqueAnswers = Array.from(new Set(correctAnswers));
+          const uniqueCorrectAnswers = Array.from(new Set(correctAnswers));
+
+          let answers: string[];
+          if (question.matchingAnswers && question.matchingAnswers.length > 0) {
+            // Start with matchingAnswers and add any missing correct answers
+            answers = [...question.matchingAnswers];
+            uniqueCorrectAnswers.forEach((answer) => {
+              if (!answers.includes(answer)) {
+                answers.push(answer);
+              }
+            });
+          } else {
+            answers = uniqueCorrectAnswers;
+          }
+
           // Use session seed so it's random per session but stable within session
+          // Ensure we have a seed (generate one if needed)
+          if (!sessionSeedRef.current) {
+            sessionSeedRef.current = Math.random()
+              .toString(36)
+              .substring(2, 15);
+          }
           newShuffledOrders.set(
             question._id,
-            seededShuffle(uniqueAnswers, sessionSeedRef.current!),
+            seededShuffle(answers, sessionSeedRef.current),
           );
         }
       }
     });
-    return newShuffledOrders;
+    setShuffledMatchingOrders(newShuffledOrders);
   }, [questions, savedProgress, seededShuffle]);
 
   // Check for saved progress on mount
@@ -136,6 +160,17 @@ export function PracticeTestPage({
     setShowResumeDialog(false);
     // Progress is already loaded via savedProgress state
   };
+
+  const handleShuffledMatchingAnswersChange = useCallback(
+    (questionId: string, answers: string[]) => {
+      setShuffledMatchingOrders((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(questionId, answers);
+        return newMap;
+      });
+    },
+    [],
+  );
 
   const handleStartFresh = () => {
     if (userId) {
@@ -427,6 +462,9 @@ export function PracticeTestPage({
                   shuffledMatchingAnswers={shuffledMatchingOrders.get(
                     currentQuestion._id,
                   )}
+                  onShuffledMatchingAnswersChange={
+                    handleShuffledMatchingAnswersChange
+                  }
                 />
 
                 {/* Keyboard hint */}

@@ -135,6 +135,32 @@ Match prompts with answers by typing the corresponding number. Answers can be re
 - The same answer number can be used for multiple prompts (many-to-many)
 - Keyboard navigation: `↑`/`↓` to move between fields, `Enter`/`Tab` to advance
 
+**Adding Extra Answers (Distractors):**
+
+You can add extra answers to make the matching more challenging by including the `matchingAnswers` field:
+
+```json
+{
+  "id": "matching_002",
+  "text": "Match each country with its capital:",
+  "type": "matching",
+  "options": [],
+  "correctAnswers": [],
+  "matchingPairs": [
+    { "prompt": "United Kingdom", "answer": "London" },
+    { "prompt": "Germany", "answer": "Berlin" },
+    { "prompt": "Italy", "answer": "Rome" }
+  ],
+  "matchingAnswers": ["London", "Berlin", "Rome", "Paris", "Madrid"]
+}
+```
+
+- The `matchingAnswers` array defines all possible answers shown in column B
+- Answers are shuffled when displayed to the user
+- All unique answers from `matchingPairs` must be included in `matchingAnswers`
+- Extra answers (distractors) can be added to increase difficulty
+- This is useful when multiple prompts can share the same answer
+
 ### 5. Fill-in-the-Blank (FIB)
 
 Text input answer with multiple accepted variations.
@@ -252,6 +278,12 @@ The import system performs strict validation:
 | MS       | 2              | 1+                  | -                                |
 | Matching | 0              | 0                   | `matchingPairs` required (min 2) |
 | FIB      | 0              | 1+                  | -                                |
+
+**Matching Question Notes:**
+
+- `matchingAnswers` is optional - if not provided, answers are derived from `matchingPairs`
+- If provided, `matchingAnswers` must contain all unique answers from `matchingPairs`
+- Extra answers in `matchingAnswers` are shuffled and displayed as distractors
 
 ## Text Formatting
 

@@ -30,6 +30,8 @@ const applicationTables = {
         }),
       ),
     ),
+    // Additional answers for matching questions (can include distractors)
+    matchingAnswers: v.optional(v.array(v.string())),
   })
     .index("by_questionId", ["questionId"])
     .index("by_testId", ["testId"]),

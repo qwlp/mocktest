@@ -11,6 +11,7 @@ export function MatchingQuestion({
   showFeedback = false,
   isSubmitted = false,
   shuffledAnswers: propShuffledAnswers,
+  onShuffledAnswersChange,
 }: MatchingQuestionProps) {
   const [inputs, setInputs] = useState<Record<number, string>>({});
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -19,14 +20,61 @@ export function MatchingQuestion({
   const prompts = matchingPairs.map((pair) => pair.prompt);
   const correctAnswers = matchingPairs.map((pair) => pair.answer);
 
-  // Use pre-shuffled answers from session if provided, otherwise use original order
-  const shuffledAnswers = React.useMemo(() => {
-    if (propShuffledAnswers) {
-      return propShuffledAnswers;
+  // State to hold shuffled answers that persists during the component lifecycle
+  const [shuffledAnswers, setShuffledAnswers] = useState<string[]>([]);
+
+  // Initialize shuffled answers once when question changes
+  // This effect only runs when the question changes, not when props change
+  useEffect(() => {
+    // If we have pre-shuffled answers from the session, use those
+    if (propShuffledAnswers && propShuffledAnswers.length > 0) {
+      setShuffledAnswers(propShuffledAnswers);
+      return;
     }
-    // Fallback: deduplicate and use original order (no shuffling)
-    return Array.from(new Set(correctAnswers));
-  }, [propShuffledAnswers, correctAnswers]);
+
+    // Otherwise, build the answers list and shuffle it
+    let allAnswers: string[];
+
+    if (question.matchingAnswers && question.matchingAnswers.length > 0) {
+      // Start with matchingAnswers and ensure all correct answers are included
+      allAnswers = [...question.matchingAnswers];
+      correctAnswers.forEach((answer) => {
+        if (!allAnswers.includes(answer)) {
+          allAnswers.push(answer);
+        }
+      });
+    } else {
+      // Fall back to just the correct answers from matchingPairs
+      allAnswers = Array.from(new Set(correctAnswers));
+    }
+
+    // Shuffle the answers
+    const shuffled = [...allAnswers];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    setShuffledAnswers(shuffled);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question._id]); // Only re-run when question ID changes
+
+  // Report shuffled answers back to parent for session storage
+  // Only do this if we generated our own shuffle (not from prop)
+  useEffect(() => {
+    if (
+      shuffledAnswers.length > 0 &&
+      !propShuffledAnswers &&
+      onShuffledAnswersChange
+    ) {
+      onShuffledAnswersChange(question._id, shuffledAnswers);
+    }
+  }, [
+    shuffledAnswers,
+    propShuffledAnswers,
+    onShuffledAnswersChange,
+    question._id,
+  ]);
 
   useEffect(() => {
     if (userAnswer && userAnswer.length > 0) {
