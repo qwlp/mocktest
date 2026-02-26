@@ -50,8 +50,48 @@ export function PracticeTestPage({
   const [savedProgress, setSavedProgress] = useState<SavedTestProgress | null>(
     null,
   );
+  // Store shuffled matching answers per question ID - generated once per session
+  const [shuffledMatchingOrders, setShuffledMatchingOrders] = useState<
+    Map<string, string[]>
+  >(new Map());
 
   const userId = user?._id?.toString() || null;
+
+  // Helper function to shuffle array using Fisher-Yates algorithm
+  const shuffleArray = useCallback(<T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, []);
+
+  // Generate shuffled matching answers once when questions load
+  // Restore from saved progress if resuming a test
+  useEffect(() => {
+    if (questions) {
+      const newShuffledOrders = new Map<string, string[]>();
+      questions.forEach((question) => {
+        if (question.type === "matching" && question.matchingPairs) {
+          // Check if we have saved shuffled order for this question
+          const savedOrder =
+            savedProgress?.shuffledMatchingOrders?.[question._id];
+          if (savedOrder) {
+            newShuffledOrders.set(question._id, savedOrder);
+          } else {
+            // Generate new shuffled order
+            const correctAnswers = question.matchingPairs.map(
+              (pair) => pair.answer,
+            );
+            const uniqueAnswers = Array.from(new Set(correctAnswers));
+            newShuffledOrders.set(question._id, shuffleArray(uniqueAnswers));
+          }
+        }
+      });
+      setShuffledMatchingOrders(newShuffledOrders);
+    }
+  }, [questions, shuffleArray, savedProgress]);
 
   // Check for saved progress on mount
   useEffect(() => {
@@ -96,7 +136,14 @@ export function PracticeTestPage({
     handleSubmitTest,
     handleExitTest,
     getCurrentAnswerArray,
-  } = useTestState({ testId, questions, onExitTest, userId, savedProgress });
+  } = useTestState({
+    testId,
+    questions,
+    onExitTest,
+    userId,
+    savedProgress,
+    shuffledMatchingOrders,
+  });
 
   const currentQuestion = questions?.[currentQuestionIndex];
   const currentQuestionType = currentQuestion?.type as QuestionType;
@@ -256,6 +303,7 @@ export function PracticeTestPage({
         isSubmitted={isSubmitted}
         onClose={() => setIsMobileNavOpen(false)}
         userAnswers={userAnswers}
+        shuffledMatchingOrders={shuffledMatchingOrders}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -268,6 +316,7 @@ export function PracticeTestPage({
             getQuestionStatus={getQuestionStatusForIndex}
             isSubmitted={isSubmitted}
             userAnswers={userAnswers}
+            shuffledMatchingOrders={shuffledMatchingOrders}
           />
         </div>
 
@@ -349,6 +398,9 @@ export function PracticeTestPage({
                   onAnswerChange={handleAnswerChange}
                   showFeedback={showFeedback}
                   isSubmitted={isSubmitted}
+                  shuffledMatchingAnswers={shuffledMatchingOrders.get(
+                    currentQuestion._id,
+                  )}
                 />
 
                 {/* Keyboard hint */}

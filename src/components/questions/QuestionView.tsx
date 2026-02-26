@@ -14,6 +14,7 @@ export function QuestionView({
   onAnswerChange,
   showFeedback = false,
   isSubmitted = false,
+  shuffledMatchingAnswers,
 }: QuestionViewProps) {
   const handleSingleAnswerChange = (selectedOption: string) => {
     if (isSubmitted) return;
@@ -70,6 +71,7 @@ export function QuestionView({
         onAnswerChange={onAnswerChange}
         showFeedback={showFeedback}
         isSubmitted={isSubmitted}
+        shuffledAnswers={shuffledMatchingAnswers}
       />
     );
   }

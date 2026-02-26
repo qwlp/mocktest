@@ -14,6 +14,7 @@ interface UseTestStateProps {
   onExitTest: () => void;
   userId: string | null;
   savedProgress: SavedTestProgress | null;
+  shuffledMatchingOrders?: Map<string, string[]>;
 }
 
 interface UseTestStateReturn {
@@ -41,6 +42,7 @@ export function useTestState({
   onExitTest,
   userId,
   savedProgress,
+  shuffledMatchingOrders,
 }: UseTestStateProps): UseTestStateReturn {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(() => {
     return savedProgress?.currentQuestionIndex ?? 0;
@@ -63,9 +65,22 @@ export function useTestState({
   // Auto-save progress to localStorage on every answer change
   useEffect(() => {
     if (userId && !isSubmitted) {
-      saveTestProgress(testId, userId, userAnswers, currentQuestionIndex);
+      saveTestProgress(
+        testId,
+        userId,
+        userAnswers,
+        currentQuestionIndex,
+        shuffledMatchingOrders,
+      );
     }
-  }, [userAnswers, currentQuestionIndex, testId, userId, isSubmitted]);
+  }, [
+    userAnswers,
+    currentQuestionIndex,
+    testId,
+    userId,
+    isSubmitted,
+    shuffledMatchingOrders,
+  ]);
 
   const currentQuestion = questions?.[currentQuestionIndex];
   const currentUserAnswer = userAnswers.find(
@@ -140,7 +155,7 @@ export function useTestState({
   }, [currentQuestion, userAnswers]);
 
   const score = questions
-    ? calculateScore(questions, userAnswers)
+    ? calculateScore(questions, userAnswers, shuffledMatchingOrders)
     : { correct: 0, total: 0 };
   const progress = questions
     ? Math.round(((currentQuestionIndex + 1) / questions.length) * 100)

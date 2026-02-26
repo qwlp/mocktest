@@ -12,6 +12,7 @@ interface MobileNavOverlayProps {
   isSubmitted: boolean;
   onClose: () => void;
   userAnswers?: UserAnswer[];
+  shuffledMatchingOrders?: Map<string, string[]>;
 }
 
 export function MobileNavOverlay({
@@ -23,6 +24,7 @@ export function MobileNavOverlay({
   isSubmitted,
   onClose,
   userAnswers = [],
+  shuffledMatchingOrders,
 }: MobileNavOverlayProps) {
   if (!isOpen) return null;
 
@@ -66,6 +68,7 @@ export function MobileNavOverlay({
             getQuestionStatus={getQuestionStatus}
             isSubmitted={isSubmitted}
             userAnswers={userAnswers}
+            shuffledMatchingOrders={shuffledMatchingOrders}
           />
         </div>
       </div>

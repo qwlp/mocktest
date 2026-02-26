@@ -11,6 +11,7 @@ interface QuestionNavProps {
   getQuestionStatus: (index: number) => QuestionStatus;
   isSubmitted: boolean;
   userAnswers?: UserAnswer[];
+  shuffledMatchingOrders?: Map<string, string[]>;
 }
 
 function QuestionTypeBadge({ type }: { type: string }) {
@@ -36,6 +37,7 @@ export function QuestionNav({
   getQuestionStatus,
   isSubmitted,
   userAnswers = [],
+  shuffledMatchingOrders,
 }: QuestionNavProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -97,7 +99,7 @@ export function QuestionNav({
               );
               const correct =
                 isSubmitted && isAnswered
-                  ? isQuestionCorrect(q, userAnswer)
+                  ? isQuestionCorrect(q, userAnswer, shuffledMatchingOrders)
                   : null;
 
               return (
@@ -163,7 +165,7 @@ export function QuestionNav({
             const userAnswer = userAnswers.find((a) => a.questionId === q._id);
             const correct =
               isSubmitted && isAnswered
-                ? isQuestionCorrect(q, userAnswer)
+                ? isQuestionCorrect(q, userAnswer, shuffledMatchingOrders)
                 : null;
 
             return (

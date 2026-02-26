@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MatchingQuestionProps, MatchingPair } from "../../types";
-import { Check, X, ArrowRight } from "lucide-react";
+import { Check, X, ArrowRight, ChevronDown } from "lucide-react";
 
 export function MatchingQuestion({
   question,
@@ -10,6 +10,7 @@ export function MatchingQuestion({
   onAnswerChange,
   showFeedback = false,
   isSubmitted = false,
+  shuffledAnswers: propShuffledAnswers,
 }: MatchingQuestionProps) {
   const [inputs, setInputs] = useState<Record<number, string>>({});
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -17,6 +18,15 @@ export function MatchingQuestion({
   const matchingPairs: MatchingPair[] = question.matchingPairs || [];
   const prompts = matchingPairs.map((pair) => pair.prompt);
   const correctAnswers = matchingPairs.map((pair) => pair.answer);
+
+  // Use pre-shuffled answers from session if provided, otherwise use original order
+  const shuffledAnswers = React.useMemo(() => {
+    if (propShuffledAnswers) {
+      return propShuffledAnswers;
+    }
+    // Fallback: deduplicate and use original order (no shuffling)
+    return Array.from(new Set(correctAnswers));
+  }, [propShuffledAnswers, correctAnswers]);
 
   useEffect(() => {
     if (userAnswer && userAnswer.length > 0) {
@@ -48,7 +58,8 @@ export function MatchingQuestion({
     (promptIndex: number, value: string) => {
       if (isSubmitted) return;
 
-      const cleaned = value.replace(/[^0-9]/g, "");
+      // Take only the first digit to handle cases where user types multiple numbers (e.g., "1,2" -> "1")
+      const cleaned = value.replace(/[^0-9]/g, "").charAt(0);
       const num = parseInt(cleaned, 10);
 
       // Validate the number is within range
@@ -61,7 +72,7 @@ export function MatchingQuestion({
         [promptIndex]: cleaned,
       }));
     },
-    [isSubmitted],
+    [isSubmitted, shuffledAnswers.length],
   );
 
   const handleKeyDown = useCallback(
@@ -117,10 +128,6 @@ export function MatchingQuestion({
     const index = num - 1;
     return shuffledAnswers[index] || "";
   };
-
-  const shuffledAnswers = React.useMemo(() => {
-    return Array.from(new Set(correctAnswers));
-  }, [correctAnswers]);
 
   const progress = Object.keys(inputs).filter(
     (k) => inputs[parseInt(k)] !== "",
@@ -203,39 +210,57 @@ export function MatchingQuestion({
                         </ReactMarkdown>
                       </div>
 
-                      {/* Input with Match Display */}
+                      {/* Dropdown Select */}
                       <div className="flex items-center gap-3 flex-wrap">
-                        <input
-                          ref={(el) => {
-                            inputRefs.current[promptIndex] = el;
-                          }}
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={inputValue}
-                          onChange={(e) =>
-                            handleInputChange(promptIndex, e.target.value)
-                          }
-                          onKeyDown={(e) =>
-                            handleKeyDown(e, promptIndex, prompts.length)
-                          }
-                          disabled={isSubmitted}
-                          placeholder="#"
-                          className={`
-                            w-14 h-10 text-center text-lg font-semibold rounded-lg border-2 
-                            transition-all duration-200 focus:outline-none
-                            ${
-                              feedback === "correct"
-                                ? "border-[var(--color-success)] focus:border-[var(--color-success)]"
-                                : feedback === "incorrect"
-                                  ? "border-[var(--color-error)] focus:border-[var(--color-error)]"
-                                  : "border-[var(--color-border)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
+                        <div className="relative">
+                          <select
+                            ref={(el) => {
+                              inputRefs.current[promptIndex] =
+                                el as unknown as HTMLInputElement;
+                            }}
+                            value={inputValue}
+                            onChange={(e) =>
+                              handleInputChange(promptIndex, e.target.value)
                             }
-                            bg-[var(--color-surface)] text-[var(--color-text)]
-                            disabled:cursor-not-allowed
-                          `}
-                          aria-label={`Match for question ${promptIndex + 1}`}
-                        />
+                            onKeyDown={(e) =>
+                              handleKeyDown(e, promptIndex, prompts.length)
+                            }
+                            disabled={isSubmitted}
+                            className={`
+                              w-20 h-10 px-2 text-center text-lg font-semibold rounded-lg border-2 
+                              transition-all duration-200 focus:outline-none cursor-pointer
+                              ${
+                                feedback === "correct"
+                                  ? "border-[var(--color-success)] focus:border-[var(--color-success)]"
+                                  : feedback === "incorrect"
+                                    ? "border-[var(--color-error)] focus:border-[var(--color-error)]"
+                                    : "border-[var(--color-border)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
+                              }
+                              bg-[var(--color-surface)] text-[var(--color-text)]
+                              disabled:cursor-not-allowed disabled:opacity-70
+                              appearance-none
+                              pr-8
+                            `}
+                            aria-label={`Match for question ${promptIndex + 1}`}
+                          >
+                            <option
+                              value=""
+                              className="bg-[var(--color-surface)]"
+                            >
+                              -
+                            </option>
+                            {shuffledAnswers.map((_, index) => (
+                              <option
+                                key={index}
+                                value={index + 1}
+                                className="bg-[var(--color-surface)] text-[var(--color-text)]"
+                              >
+                                {index + 1}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-[var(--color-text-muted)]" />
+                        </div>
 
                         {/* Matched Answer Preview */}
                         {matchedAnswer && (

@@ -9,6 +9,8 @@ export interface SavedTestProgress {
   timestamp: number;
   testId: string;
   userId: string;
+  // Store shuffled matching answers per question ID to ensure consistent scoring
+  shuffledMatchingOrders?: Record<string, string[]>;
 }
 
 function getStorageKey(testId: string, userId: string): string {
@@ -20,14 +22,27 @@ export function saveTestProgress(
   userId: string,
   userAnswers: UserAnswer[],
   currentQuestionIndex: number,
+  shuffledMatchingOrders?: Map<string, string[]>,
 ): void {
   try {
+    // Convert Map to Record for JSON serialization
+    const shuffledOrdersRecord: Record<string, string[]> = {};
+    if (shuffledMatchingOrders) {
+      shuffledMatchingOrders.forEach((value, key) => {
+        shuffledOrdersRecord[key] = value;
+      });
+    }
+
     const data: SavedTestProgress = {
       userAnswers,
       currentQuestionIndex,
       timestamp: Date.now(),
       testId: testId.toString(),
       userId,
+      shuffledMatchingOrders:
+        Object.keys(shuffledOrdersRecord).length > 0
+          ? shuffledOrdersRecord
+          : undefined,
     };
     localStorage.setItem(
       getStorageKey(testId.toString(), userId),

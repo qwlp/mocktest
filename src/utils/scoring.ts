@@ -4,6 +4,7 @@ import { UserAnswer, Score, MatchingPair } from "../types";
 export function calculateScore(
   questions: Doc<"questions">[],
   userAnswers: UserAnswer[],
+  shuffledMatchingOrders?: Map<string, string[]>,
 ): Score {
   let correct = 0;
   const total = questions.length;
@@ -15,7 +16,14 @@ export function calculateScore(
     if (!userAnswer) return;
 
     if (question.type === "matching") {
-      if (checkMatchingAnswer(userAnswer, question.matchingPairs || [])) {
+      const shuffledOrder = shuffledMatchingOrders?.get(question._id);
+      if (
+        checkMatchingAnswer(
+          userAnswer,
+          question.matchingPairs || [],
+          shuffledOrder,
+        )
+      ) {
         correct++;
       }
     } else if (question.type === "fib") {
@@ -35,6 +43,7 @@ export function calculateScore(
 function checkMatchingAnswer(
   userAnswer: UserAnswer,
   correctPairs: MatchingPair[],
+  shuffledOrder?: string[],
 ): boolean {
   const userMatches = userAnswer.matchingAnswers || [];
 
@@ -42,7 +51,9 @@ function checkMatchingAnswer(
     return false;
   }
 
+  // Use the shuffled order if provided (from the UI session), otherwise generate from database order
   const correctAnswers = correctPairs.map((pair) => pair.answer);
+  const uniqueAnswers = shuffledOrder || Array.from(new Set(correctAnswers));
 
   for (const userMatch of userMatches) {
     const [promptIndexStr, answerNumStr] = userMatch.split(":");
@@ -53,7 +64,13 @@ function checkMatchingAnswer(
       return false;
     }
 
-    const userAnswerText = correctAnswers[answerNum - 1];
+    // Check if answer number is valid for the unique answers list
+    if (answerNum < 1 || answerNum > uniqueAnswers.length) {
+      return false;
+    }
+
+    // Get the answer text from the unique answers list (what the user sees)
+    const userAnswerText = uniqueAnswers[answerNum - 1];
     const correctPair = correctPairs[promptIndex];
 
     if (!correctPair || correctPair.answer !== userAnswerText) {
@@ -113,11 +130,17 @@ export function calculateProgress(
 export function isQuestionCorrect(
   question: Doc<"questions">,
   userAnswer: UserAnswer | undefined,
+  shuffledMatchingOrders?: Map<string, string[]>,
 ): boolean {
   if (!userAnswer) return false;
 
   if (question.type === "matching") {
-    return checkMatchingAnswer(userAnswer, question.matchingPairs || []);
+    const shuffledOrder = shuffledMatchingOrders?.get(question._id);
+    return checkMatchingAnswer(
+      userAnswer,
+      question.matchingPairs || [],
+      shuffledOrder,
+    );
   } else if (question.type === "fib") {
     return checkFillInBlankAnswer(userAnswer, question.correctAnswers);
   } else {
