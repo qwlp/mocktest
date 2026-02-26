@@ -50,48 +50,59 @@ export function PracticeTestPage({
   const [savedProgress, setSavedProgress] = useState<SavedTestProgress | null>(
     null,
   );
-  // Store shuffled matching answers per question ID - generated once per session
-  const [shuffledMatchingOrders, setShuffledMatchingOrders] = useState<
-    Map<string, string[]>
-  >(new Map());
 
   const userId = user?._id?.toString() || null;
 
-  // Helper function to shuffle array using Fisher-Yates algorithm
-  const shuffleArray = useCallback(<T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  // Deterministic shuffle function using a simple seeded random
+  const seededShuffle = useCallback(<T,>(array: T[], seed: string): T[] => {
+    // Create a simple hash from the seed string
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      const char = seed.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
     }
-    return shuffled;
+
+    const result = [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+      // Generate deterministic random index based on hash
+      const randomIndex =
+        Math.abs((hash * (i + 1) * 9301 + 49297) % 233280) % (i + 1);
+      hash = (hash * 9301 + 49297) % 233280;
+      [result[i], result[randomIndex]] = [result[randomIndex], result[i]];
+    }
+    return result;
   }, []);
 
-  // Generate shuffled matching answers once when questions load
-  // Restore from saved progress if resuming a test
-  useEffect(() => {
-    if (questions) {
-      const newShuffledOrders = new Map<string, string[]>();
-      questions.forEach((question) => {
-        if (question.type === "matching" && question.matchingPairs) {
-          // Check if we have saved shuffled order for this question
-          const savedOrder =
-            savedProgress?.shuffledMatchingOrders?.[question._id];
-          if (savedOrder) {
-            newShuffledOrders.set(question._id, savedOrder);
-          } else {
-            // Generate new shuffled order
-            const correctAnswers = question.matchingPairs.map(
-              (pair) => pair.answer,
-            );
-            const uniqueAnswers = Array.from(new Set(correctAnswers));
-            newShuffledOrders.set(question._id, shuffleArray(uniqueAnswers));
-          }
+  // Store shuffled matching answers per question ID - computed once when questions load
+  // Use useMemo to ensure stable computation, avoiding the race condition from useEffect
+  const shuffledMatchingOrders = useMemo(() => {
+    if (!questions) return new Map<string, string[]>();
+
+    const newShuffledOrders = new Map<string, string[]>();
+    questions.forEach((question) => {
+      if (question.type === "matching" && question.matchingPairs) {
+        // Check if we have saved shuffled order for this question from prior session
+        const savedOrder =
+          savedProgress?.shuffledMatchingOrders?.[question._id];
+        if (savedOrder && savedOrder.length > 0) {
+          newShuffledOrders.set(question._id, savedOrder);
+        } else {
+          // Generate new shuffled order (deterministic based on question ID + test ID)
+          const correctAnswers = question.matchingPairs.map(
+            (pair) => pair.answer,
+          );
+          const uniqueAnswers = Array.from(new Set(correctAnswers));
+          // Use a seeded shuffle based on question ID for consistency
+          newShuffledOrders.set(
+            question._id,
+            seededShuffle(uniqueAnswers, `${testId}-${question._id}`),
+          );
         }
-      });
-      setShuffledMatchingOrders(newShuffledOrders);
-    }
-  }, [questions, shuffleArray, savedProgress]);
+      }
+    });
+    return newShuffledOrders;
+  }, [questions, testId, savedProgress, seededShuffle]);
 
   // Check for saved progress on mount
   useEffect(() => {
