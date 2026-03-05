@@ -5,8 +5,6 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -25,6 +23,7 @@ import { ConfirmModal } from "./ConfirmModal";
 import { NavigationControls } from "./NavigationControls";
 import { Confetti } from "./Confetti";
 import { ResumeDialog } from "./ResumeDialog";
+import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import {
   loadTestProgress,
   clearTestProgress,
@@ -439,11 +438,10 @@ export function PracticeTestPage({
 
                 {/* Question Text */}
                 <div className="mb-6">
-                  <div className="prose prose-base max-w-none text-[var(--color-text)] leading-relaxed">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {currentQuestion.text}
-                    </ReactMarkdown>
-                  </div>
+                  <MarkdownRenderer
+                    content={currentQuestion.text}
+                    className="prose prose-base max-w-none text-[var(--color-text)] leading-relaxed"
+                  />
                   {currentQuestion.type === "ms" && (
                     <p className="text-sm text-[var(--color-rose-600)] dark:text-[var(--color-rose-400)] mt-3 flex items-center gap-2">
                       <Sparkles className="w-4 h-4" />

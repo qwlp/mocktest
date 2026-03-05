@@ -651,7 +651,7 @@ body {
   font-weight: 600;
 }
 
-.prose code {
+.prose :not(pre) > code {
   background-color: var(--color-surface-elevated);
   color: var(--color-primary);
   padding: 0.25rem 0.5rem;
@@ -660,7 +660,7 @@ body {
   font-family: "JetBrains Mono", monospace;
 }
 
-.dark .prose code {
+.dark .prose :not(pre) > code {
   color: #b388a3;
 }
 
@@ -670,6 +670,86 @@ body {
 
 .prose p:last-child {
   margin-bottom: 0;
+}
+
+.md-inline-code {
+  background: var(--color-surface-elevated);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.86em;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.dark .md-inline-code {
+  color: #d48fa8;
+}
+
+.md-codeblock {
+  margin: 1rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.85rem;
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.dark .md-codeblock {
+  background: var(--color-surface);
+}
+
+.md-codeblock-lang {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent 85%);
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.md-codeblock-pre {
+  border-radius: 0;
+  overflow-x: auto;
+}
+
+.md-codeblock-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.45rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  transition: var(--transition-fast);
+}
+
+.md-codeblock-copy:hover {
+  border-color: var(--color-primary-light);
+  color: var(--color-text);
+}
+
+.md-codeblock :where(code) {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  color: inherit !important;
+}
+
+.md-codeblock :where(code)::before,
+.md-codeblock :where(code)::after {
+  content: none !important;
 }
 
 /* Gradient Text */

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { MatchingQuestionProps, MatchingPair } from "../../types";
 import { Check, X, ArrowRight, ChevronDown } from "lucide-react";
+import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 
 export function MatchingQuestion({
   question,
@@ -252,11 +251,10 @@ export function MatchingQuestion({
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)] mb-3">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {prompt}
-                        </ReactMarkdown>
-                      </div>
+                      <MarkdownRenderer
+                        content={prompt}
+                        className="prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)] mb-3"
+                      />
 
                       {/* Dropdown Select */}
                       <div className="flex items-center gap-3 flex-wrap">
@@ -372,11 +370,10 @@ export function MatchingQuestion({
                   <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-[var(--color-primary)] text-white flex items-center justify-center text-sm font-bold">
                     {index + 1}
                   </span>
-                  <div className="flex-1 min-w-0 prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)]">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {answer}
-                    </ReactMarkdown>
-                  </div>
+                  <MarkdownRenderer
+                    content={answer}
+                    className="flex-1 min-w-0 prose prose-sm max-w-none dark:prose-invert text-[var(--color-text)]"
+                  />
                 </div>
               </div>
             ))}

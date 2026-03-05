@@ -1,10 +1,9 @@
 import React from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { MatchingQuestion } from "./MatchingQuestion";
 import { FillInBlankQuestion } from "./FillInBlankQuestion";
 import { QuestionViewProps } from "../../types";
 import { Check, X, AlertTriangle } from "lucide-react";
+import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 
 type FeedbackType = "correct" | "incorrect" | "missed" | null;
 
@@ -153,11 +152,10 @@ export function QuestionView({
 
               {/* Option Content */}
               <div className="flex-1 min-w-0">
-                <div className="text-[var(--color-text)] prose prose-sm max-w-none dark:prose-invert">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {option}
-                  </ReactMarkdown>
-                </div>
+                <MarkdownRenderer
+                  content={option}
+                  className="text-[var(--color-text)] prose prose-sm max-w-none dark:prose-invert"
+                />
               </div>
 
               {/* Feedback Icon */}
