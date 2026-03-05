@@ -1,5 +1,6 @@
 import { Doc } from "../../convex/_generated/dataModel";
 import { UserAnswer, Score, MatchingPair } from "../types";
+import { isFibQuestionCorrect } from "./fillInBlank";
 
 export function calculateScore(
   questions: Doc<"questions">[],
@@ -27,7 +28,7 @@ export function calculateScore(
         correct++;
       }
     } else if (question.type === "fib") {
-      if (checkFillInBlankAnswer(userAnswer, question.correctAnswers)) {
+      if (checkFillInBlankAnswer(question, userAnswer)) {
         correct++;
       }
     } else {
@@ -82,23 +83,10 @@ function checkMatchingAnswer(
 }
 
 function checkFillInBlankAnswer(
+  question: Doc<"questions">,
   userAnswer: UserAnswer,
-  correctAnswers: string[],
 ): boolean {
-  const userFibAnswer =
-    userAnswer.fillInBlankAnswer?.[0]?.trim().toLowerCase() || "";
-  const normalizedCorrectAnswers = correctAnswers.map((answer) =>
-    answer.toLowerCase(),
-  );
-
-  return normalizedCorrectAnswers.some((correctAnswer) => {
-    if (userFibAnswer === correctAnswer) return true;
-
-    const normalizedUser = normalizeText(userFibAnswer);
-    const normalizedCorrect = normalizeText(correctAnswer);
-
-    return normalizedUser === normalizedCorrect;
-  });
+  return isFibQuestionCorrect(question, userAnswer.fillInBlankAnswer || []);
 }
 
 function checkStandardAnswer(
@@ -111,13 +99,6 @@ function checkStandardAnswer(
     userSelectedAnswers.length === correctAnswers.length &&
     userSelectedAnswers.every((answer) => correctAnswers.includes(answer))
   );
-}
-
-export function normalizeText(text: string): string {
-  return text
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 export function calculateProgress(
@@ -142,7 +123,7 @@ export function isQuestionCorrect(
       shuffledOrder,
     );
   } else if (question.type === "fib") {
-    return checkFillInBlankAnswer(userAnswer, question.correctAnswers);
+    return checkFillInBlankAnswer(question, userAnswer);
   } else {
     return checkStandardAnswer(userAnswer, question.correctAnswers);
   }

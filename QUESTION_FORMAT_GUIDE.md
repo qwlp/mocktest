@@ -191,6 +191,23 @@ Text input answer with multiple accepted variations.
 - Multiple variations can be accepted (case insensitive alternatives)
 - `options` should be empty array
 
+**Multiple blanks in one question:**
+
+If your question text contains multiple blank placeholders using `___` (3+ underscores), answers are matched in order.
+
+```json
+{
+  "id": "fib_multi_001",
+  "text": "Assume a and b start at 4 and 6. After increment, a = ____ and b = ____.",
+  "type": "fib",
+  "options": [],
+  "correctAnswers": ["5", "7"]
+}
+```
+
+- Blank 1 matches `correctAnswers[0]`, blank 2 matches `correctAnswers[1]`, etc.
+- Optional variations per blank can be written with `|`, e.g. `"color|colour"`.
+
 ## Complete Example
 
 ```json

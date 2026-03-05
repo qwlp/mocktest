@@ -1,5 +1,6 @@
 import { Doc } from "../../convex/_generated/dataModel";
 import { UserAnswer, QuestionStatus } from "../types";
+import { isFibQuestionAnswered } from "./fillInBlank";
 
 export function getQuestionStatus(
   question: Doc<"questions">,
@@ -15,9 +16,10 @@ export function getQuestionStatus(
     const hasAnswers = (userAnswer.matchingAnswers || []).length > 0;
     return hasAnswers ? "answered" : "unanswered";
   } else if (question.type === "fib") {
-    const hasAnswer =
-      (userAnswer.fillInBlankAnswer || []).length > 0 &&
-      (userAnswer.fillInBlankAnswer?.[0]?.trim() || "").length > 0;
+    const hasAnswer = isFibQuestionAnswered(
+      question,
+      userAnswer.fillInBlankAnswer || [],
+    );
     return hasAnswer ? "answered" : "unanswered";
   } else {
     const hasAnswers = (userAnswer.selectedAnswers || []).length > 0;

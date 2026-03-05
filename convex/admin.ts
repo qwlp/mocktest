@@ -236,6 +236,16 @@ function validateQuestion(question: any, index: number): string[] {
             `Question ${questionNum} (Fill-in-the-Blank): Must have at least 1 correct answer`,
           );
         }
+        const blankCount = question.text?.match(/_{3,}/g)?.length || 0;
+        if (
+          blankCount > 1 &&
+          question.correctAnswers &&
+          question.correctAnswers.length < blankCount
+        ) {
+          errors.push(
+            `Question ${questionNum} (Fill-in-the-Blank): Found ${blankCount} blanks in text, but only ${question.correctAnswers.length} answers provided`,
+          );
+        }
         break;
     }
   }

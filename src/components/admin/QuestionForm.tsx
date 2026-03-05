@@ -96,8 +96,20 @@ export function QuestionForm({
       }
     }
 
-    if (formData.type === "fib" && !formData.correctAnswers[0]?.trim()) {
+    if (
+      formData.type === "fib" &&
+      formData.correctAnswers.filter((answer) => answer.trim()).length === 0
+    ) {
       newErrors.correctAnswers = "Please provide a correct answer";
+    } else if (formData.type === "fib") {
+      const blankCount = formData.text.match(/_{3,}/g)?.length || 0;
+      const providedAnswers = formData.correctAnswers.filter((answer) =>
+        answer.trim(),
+      ).length;
+
+      if (blankCount > 1 && providedAnswers < blankCount) {
+        newErrors.correctAnswers = `This question has ${blankCount} blanks but only ${providedAnswers} answers`;
+      }
     }
 
     setErrors(newErrors);
@@ -106,7 +118,15 @@ export function QuestionForm({
 
   const handleSubmit = () => {
     if (validate()) {
-      onSubmit(formData);
+      const cleanedCorrectAnswers =
+        formData.type === "fib"
+          ? formData.correctAnswers.map((answer) => answer.trim()).filter(Boolean)
+          : formData.correctAnswers;
+
+      onSubmit({
+        ...formData,
+        correctAnswers: cleanedCorrectAnswers,
+      });
     }
   };
 
@@ -405,24 +425,28 @@ export function QuestionForm({
           {formData.type === "fib" && (
             <div>
               <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
-                Correct Answer <span className="text-red-500">*</span>
+                Correct Answers <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.correctAnswers[0] || ""}
+              <textarea
+                rows={4}
+                value={formData.correctAnswers.join("\n")}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    correctAnswers: [e.target.value],
+                    correctAnswers: e.target.value.split("\n"),
                   })
                 }
-                placeholder="Enter the correct answer"
+                placeholder="Use one line per answer. For multiple blanks, use one line per blank in order."
                 className={`w-full px-4 py-3 bg-white dark:bg-[var(--color-surface)] border rounded-lg text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent ${
                   errors.correctAnswers
                     ? "border-red-500"
                     : "border-[var(--color-border)]"
                 }`}
               />
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                Single blank: each line is an accepted variation. Multiple
+                blanks (____ ____): each line matches blank 1, blank 2, etc.
+              </p>
               {errors.correctAnswers && (
                 <p className="mt-1 text-sm text-red-500">
                   {errors.correctAnswers}
