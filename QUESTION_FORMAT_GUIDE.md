@@ -311,6 +311,7 @@ Question text supports basic formatting:
 - `**bold text**` for **bold**
 - `*italic text*` for _italic_
 - `` `code` `` for inline code
+- Fenced code blocks using triple backticks for any code snippet longer than 1 line
 - Tables using markdown table syntax
 
 ### Example with Formatting
@@ -322,6 +323,26 @@ Question text supports basic formatting:
   "type": "mcq",
   "options": ["2", "3", "4", "22"],
   "correctAnswers": ["4"]
+}
+```
+
+### Code Block Rule
+
+If question text or explanations include code:
+
+- Use inline backticks for single-line code only
+- Use fenced code blocks with triple backticks for any code example that is more than 1 line
+- Do not write multi-line code as plain text
+
+Example:
+
+```json
+{
+  "id": "code_block_q1",
+  "text": "What does this Python code print?\n\n```python\nx = 1\ny = 2\nprint(x + y)\n```",
+  "type": "mcq",
+  "options": ["1", "2", "3", "12"],
+  "correctAnswers": ["3"]
 }
 ```
 
@@ -439,6 +460,7 @@ When generating questions:
 4. Ensure matching pairs have equal numbers of prompts and answers
 5. Use clear, unambiguous language
 6. Test your JSON with a validator before attempting import
+7. If you include code that spans more than 1 line, wrap it in a fenced code block with triple backticks
 
 ## Example: Generating a Test
 

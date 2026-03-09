@@ -10,7 +10,6 @@ export function MatchingQuestion({
   showFeedback = false,
   isSubmitted = false,
   shuffledAnswers: propShuffledAnswers,
-  onShuffledAnswersChange,
 }: MatchingQuestionProps) {
   const [inputs, setInputs] = useState<Record<number, string>>({});
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -18,62 +17,7 @@ export function MatchingQuestion({
   const matchingPairs: MatchingPair[] = question.matchingPairs || [];
   const prompts = matchingPairs.map((pair) => pair.prompt);
   const correctAnswers = matchingPairs.map((pair) => pair.answer);
-
-  // State to hold shuffled answers that persists during the component lifecycle
-  const [shuffledAnswers, setShuffledAnswers] = useState<string[]>([]);
-
-  // Initialize shuffled answers once when question changes
-  // This effect only runs when the question changes, not when props change
-  useEffect(() => {
-    // If we have pre-shuffled answers from the session, use those
-    if (propShuffledAnswers && propShuffledAnswers.length > 0) {
-      setShuffledAnswers(propShuffledAnswers);
-      return;
-    }
-
-    // Otherwise, build the answers list and shuffle it
-    let allAnswers: string[];
-
-    if (question.matchingAnswers && question.matchingAnswers.length > 0) {
-      // Start with matchingAnswers and ensure all correct answers are included
-      allAnswers = [...question.matchingAnswers];
-      correctAnswers.forEach((answer) => {
-        if (!allAnswers.includes(answer)) {
-          allAnswers.push(answer);
-        }
-      });
-    } else {
-      // Fall back to just the correct answers from matchingPairs
-      allAnswers = Array.from(new Set(correctAnswers));
-    }
-
-    // Shuffle the answers
-    const shuffled = [...allAnswers];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    setShuffledAnswers(shuffled);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question._id]); // Only re-run when question ID changes
-
-  // Report shuffled answers back to parent for session storage
-  // Only do this if we generated our own shuffle (not from prop)
-  useEffect(() => {
-    if (
-      shuffledAnswers.length > 0 &&
-      !propShuffledAnswers &&
-      onShuffledAnswersChange
-    ) {
-      onShuffledAnswersChange(question._id, shuffledAnswers);
-    }
-  }, [
-    shuffledAnswers,
-    propShuffledAnswers,
-    onShuffledAnswersChange,
-    question._id,
-  ]);
+  const shuffledAnswers = propShuffledAnswers || [];
 
   useEffect(() => {
     if (userAnswer && userAnswer.length > 0) {
@@ -105,8 +49,7 @@ export function MatchingQuestion({
     (promptIndex: number, value: string) => {
       if (isSubmitted) return;
 
-      // Take only the first digit to handle cases where user types multiple numbers (e.g., "1,2" -> "1")
-      const cleaned = value.replace(/[^0-9]/g, "").charAt(0);
+      const cleaned = value.replace(/[^0-9]/g, "");
       const num = parseInt(cleaned, 10);
 
       // Validate the number is within range
@@ -180,6 +123,14 @@ export function MatchingQuestion({
     (k) => inputs[parseInt(k)] !== "",
   ).length;
 
+  if (shuffledAnswers.length === 0) {
+    return (
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-sm text-[var(--color-text-secondary)]">
+        Preparing matching answers...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Progress Bar */}
@@ -195,9 +146,9 @@ export function MatchingQuestion({
         </span>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex min-w-0 flex-col gap-8 lg:flex-row">
         {/* Prompts Column */}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3 pb-3 mb-4 border-b border-[var(--color-border)]">
             <span className="font-semibold text-[var(--color-text)]">
               Question
@@ -353,7 +304,7 @@ export function MatchingQuestion({
         </div>
 
         {/* Answers Column */}
-        <div className="lg:w-72 shrink-0">
+        <div className="min-w-0 shrink-0 lg:w-72">
           <div className="font-semibold text-[var(--color-text)] pb-3 mb-4 border-b border-[var(--color-border)]">
             Answers
           </div>

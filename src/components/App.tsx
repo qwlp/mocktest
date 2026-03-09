@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Toaster } from "sonner";
 import { PracticeTestPage } from "./test/PracticeTestPage";
 import { TestListPage } from "./test/TestListPage";
-import { AdminLogin, AdminDashboard } from "./admin";
+import { AdminDashboard } from "./admin";
 import { Id } from "../../convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -59,18 +59,12 @@ function AnonymousSignInButton() {
 function Header({
   currentPage,
   onExitTest,
-  isAdminLoggedIn,
-  setIsAdminLoggedIn,
   setCurrentPage,
-  setShowAdminLogin,
   user,
 }: {
   currentPage: Page;
   onExitTest: () => void;
-  isAdminLoggedIn: boolean;
-  setIsAdminLoggedIn: (value: boolean) => void;
   setCurrentPage: (page: Page) => void;
-  setShowAdminLogin: (show: boolean) => void;
   user: any;
 }) {
   return (
@@ -93,56 +87,26 @@ function Header({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-          {user && (
-            <>
-              {!isAdminLoggedIn ? (
-                <button
-                  onClick={() => setShowAdminLogin(true)}
-                  className="btn btn-ghost btn-sm hidden sm:inline-flex"
-                  title="Admin Login"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
-                  <span className="ml-2">Admin</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsAdminLoggedIn(false);
-                    setCurrentPage("list");
-                  }}
-                  className="btn btn-ghost btn-sm text-[var(--color-error)] hover:text-[var(--color-error)] hidden sm:inline-flex"
-                  title="Logout from Admin"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                    />
-                  </svg>
-                  <span className="ml-2">Logout</span>
-                </button>
-              )}
-            </>
-          )}
+          <button
+            onClick={() => setCurrentPage("admin")}
+            className="btn btn-ghost btn-sm hidden sm:inline-flex"
+            title="Open Admin"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <span className="ml-2">Admin</span>
+          </button>
           <ThemeToggleButton />
           {user && <SignOutButton />}
         </div>
@@ -154,8 +118,6 @@ function Header({
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("list");
   const [currentTestId, setCurrentTestId] = useState<Id<"tests"> | null>(null);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const user = useQuery(api.auth.loggedInUser);
 
@@ -173,12 +135,6 @@ export default function App() {
     setCurrentPage("list");
   };
 
-  const handleAdminLoginSuccess = () => {
-    setIsAdminLoggedIn(true);
-    setShowAdminLogin(false);
-    setCurrentPage("admin");
-  };
-
   return (
     <div
       className={`min-h-screen flex flex-col transition-opacity duration-500 ${isLoaded ? "opacity-100" : "opacity-0"}`}
@@ -187,15 +143,18 @@ export default function App() {
       <Header
         currentPage={currentPage}
         onExitTest={handleExitTest}
-        isAdminLoggedIn={isAdminLoggedIn}
-        setIsAdminLoggedIn={setIsAdminLoggedIn}
         setCurrentPage={setCurrentPage}
-        setShowAdminLogin={setShowAdminLogin}
         user={user}
       />
 
       <main className="flex-1">
-        {user === undefined && (
+        {currentPage === "admin" && (
+          <div className="animate-fade-in">
+            <AdminDashboard onBack={() => setCurrentPage("list")} />
+          </div>
+        )}
+
+        {currentPage !== "admin" && user === undefined && (
           <div className="flex justify-center items-center h-full min-h-[60vh] gap-4">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-[var(--color-border)] border-t-[var(--color-primary)] rounded-full animate-spin" />
@@ -206,7 +165,7 @@ export default function App() {
           </div>
         )}
 
-        {user === null && (
+        {currentPage !== "admin" && user === null && (
           <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
             <div
               className="w-full max-w-lg animate-slide-up"
@@ -255,19 +214,14 @@ export default function App() {
           </div>
         )}
 
-        {user && (
+        {currentPage !== "admin" && user && (
           <div className="animate-fade-in">
-            {currentPage === "list" && (
-              <TestListPage onStartTest={handleStartTest} />
-            )}
+            {currentPage === "list" && <TestListPage onStartTest={handleStartTest} />}
             {currentPage === "test" && currentTestId && (
               <PracticeTestPage
                 testId={currentTestId}
                 onExitTest={handleExitTest}
               />
-            )}
-            {currentPage === "admin" && isAdminLoggedIn && (
-              <AdminDashboard onBack={() => setCurrentPage("list")} />
             )}
           </div>
         )}
@@ -284,13 +238,6 @@ export default function App() {
           },
         }}
       />
-
-      {showAdminLogin && (
-        <AdminLogin
-          onLoginSuccess={handleAdminLoginSuccess}
-          onCancel={() => setShowAdminLogin(false)}
-        />
-      )}
     </div>
   );
 }

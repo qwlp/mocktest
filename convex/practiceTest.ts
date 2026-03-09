@@ -1,43 +1,113 @@
 import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
+function getStatus(document: Record<string, unknown>): "draft" | "published" {
+  return document.status === "draft" ? "draft" : "published";
+}
+
+function getSortOrder(
+  document: { _creationTime: number } & Record<string, unknown>,
+  fallback: number,
+): number {
+  return typeof document.sortOrder === "number" ? document.sortOrder : fallback;
+}
+
+function getUpdatedAt(document: { _creationTime: number } & Record<string, unknown>) {
+  return typeof document.updatedAt === "number"
+    ? document.updatedAt
+    : document._creationTime;
+}
+
+async function getSortedQuestions(ctx: any, testId: string) {
+  const questions = await ctx.db
+    .query("questions")
+    .withIndex("by_testId", (query: any) => query.eq("testId", testId))
+    .collect();
+
+  return questions
+    .map((question: any, index: number) => ({
+      ...question,
+      sortOrder: getSortOrder(question, index),
+      updatedAt: getUpdatedAt(question),
+    }))
+    .sort((left: any, right: any) => left.sortOrder - right.sortOrder);
+}
+
 export const getTests = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("tests").collect();
+    const tests = await ctx.db.query("tests").collect();
+    const publishedTests = tests
+      .map((test, index) => ({
+        ...test,
+        status: getStatus(test),
+        sortOrder: getSortOrder(test, index),
+        updatedAt: getUpdatedAt(test),
+      }))
+      .filter((test) => test.status === "published")
+      .sort((left, right) => left.sortOrder - right.sortOrder);
+
+    return Promise.all(
+      publishedTests.map(async (test) => {
+        const questions = await ctx.db
+          .query("questions")
+          .withIndex("by_testId", (query) => query.eq("testId", test._id))
+          .collect();
+        return {
+          ...test,
+          questionCount: questions.length,
+        };
+      }),
+    );
   },
 });
 
 export const getTest = query({
   args: { testId: v.id("tests") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.testId);
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      return null;
+    }
+
+    const normalizedTest = {
+      ...test,
+      status: getStatus(test),
+      sortOrder: getSortOrder(test, 0),
+      updatedAt: getUpdatedAt(test),
+    };
+
+    return normalizedTest.status === "published" ? normalizedTest : null;
   },
 });
 
 export const getQuestions = query({
   args: { testId: v.id("tests") },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("questions")
-      .withIndex("by_testId", (q) => q.eq("testId", args.testId))
-      .collect();
+    const test = await ctx.db.get(args.testId);
+    if (!test || getStatus(test as Record<string, unknown>) !== "published") {
+      return [];
+    }
+
+    return getSortedQuestions(ctx, args.testId);
   },
 });
 
 export const createSampleTest = mutation({
   args: {},
   handler: async (ctx) => {
-    // Create a test
+    const now = Date.now();
     const testId = await ctx.db.insert("tests", {
       name: "Sample Practice Test with All Question Types",
-      description: "A comprehensive test including all question types: MCQ, True/False, Multiple Select, Matching, and Fill-in-the-Blank"
+      description:
+        "A comprehensive test including all question types: MCQ, True/False, Multiple Select, Matching, and Fill-in-the-Blank",
+      status: "published",
+      sortOrder: 0,
+      updatedAt: now,
     });
 
-    // Create sample questions including all types
     const questions = [
       {
-        testId,
         text: "What is the **capital** of France?",
         type: "mcq" as const,
         options: ["London", "Berlin", "Paris", "Madrid"],
@@ -45,7 +115,6 @@ export const createSampleTest = mutation({
         questionId: "q1",
       },
       {
-        testId,
         text: "Which of the following are **programming languages**? *(Select all that apply)*",
         type: "ms" as const,
         options: ["JavaScript", "HTML", "Python", "CSS", "Java"],
@@ -53,7 +122,6 @@ export const createSampleTest = mutation({
         questionId: "q2",
       },
       {
-        testId,
         text: "The Earth is `flat`.",
         type: "tf" as const,
         options: ["True", "False"],
@@ -61,77 +129,43 @@ export const createSampleTest = mutation({
         questionId: "q3",
       },
       {
-        testId,
         text: "Match each **country** with its *capital city*:",
         type: "matching" as const,
-        options: [], // Not used for matching questions
-        correctAnswers: [], // Not used for matching questions
+        options: [],
+        correctAnswers: [],
         questionId: "q4",
         matchingPairs: [
           { prompt: "**United Kingdom**", answer: "London" },
           { prompt: "**Germany**", answer: "Berlin" },
           { prompt: "**Italy**", answer: "Rome" },
           { prompt: "**Spain**", answer: "Madrid" },
-          { prompt: "**Japan**", answer: "Tokyo" }
-        ]
+          { prompt: "**Japan**", answer: "Tokyo" },
+        ],
       },
       {
-        testId,
-        text: "Match each programming concept with its description:\n\n*Drag and drop to match the concepts with their definitions.*",
-        type: "matching" as const,
-        options: [],
-        correctAnswers: [],
-        questionId: "q5",
-        matchingPairs: [
-          { prompt: "`Variable`", answer: "A **container** for storing data values" },
-          { prompt: "`Function`", answer: "A *reusable* block of code that performs a specific task" },
-          { prompt: "`Loop`", answer: "A programming construct that **repeats** a block of code" },
-          { prompt: "`Array`", answer: "A data structure that holds *multiple values* in a single variable" }
-        ]
-      },
-      {
-        testId,
         text: "What is the **largest planet** in our solar system?\n\n*Type your answer below:*",
         type: "fib" as const,
-        options: [], // Not used for fill-in-the-blank questions
-        correctAnswers: ["Jupiter", "jupiter"], // Multiple acceptable answers
-        questionId: "q6",
-      },
-      {
-        testId,
-        text: "Complete the sentence: The **chemical symbol** for water is ___.",
-        type: "fib" as const,
         options: [],
-        correctAnswers: ["H2O", "h2o", "H₂O"], // Multiple formats accepted
-        questionId: "q7",
+        correctAnswers: ["Jupiter", "jupiter"],
+        questionId: "q5",
       },
-      {
-        testId,
-        text: "What programming language was created by **Guido van Rossum**?\n\n*Hint: It's named after a British comedy group.*",
-        type: "fib" as const,
-        options: [],
-        correctAnswers: ["Python", "python"],
-        questionId: "q8",
-      },
-      {
-        testId,
-        text: "Based on the following comparison table, which programming language is **statically typed**?\n\n| Language | Typing | Compilation |\n|----------|--------|-------------|\n| JavaScript | Dynamic | Interpreted |\n| Python | Dynamic | Interpreted |\n| Java | **Static** | Compiled |\n| C++ | **Static** | Compiled |",
-        type: "mcq" as const,
-        options: ["JavaScript", "Python", "Java", "All of the above"],
-        correctAnswers: ["Java"],
-        questionId: "q9",
-      }
     ];
 
-    for (const question of questions) {
-      await ctx.db.insert("questions", question);
+    for (const [index, question] of questions.entries()) {
+      await ctx.db.insert("questions", {
+        testId,
+        ...question,
+        matchingPairs: question.matchingPairs,
+        matchingAnswers: undefined,
+        sortOrder: index,
+        updatedAt: now,
+      });
     }
 
     return testId;
   },
 });
 
-// Internal functions for seeding
 export const countTests = internalQuery({
   args: {},
   handler: async (ctx) => {
@@ -152,11 +186,16 @@ export const addTest = internalMutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("tests", {
+    return ctx.db.insert("tests", {
       name: args.name,
       description: args.description,
+      status: args.status ?? "published",
+      sortOrder: args.sortOrder ?? 0,
+      updatedAt: Date.now(),
     });
   },
 });
@@ -170,18 +209,20 @@ export const addQuestion = internalMutation({
       v.literal("tf"),
       v.literal("ms"),
       v.literal("matching"),
-      v.literal("fib")
+      v.literal("fib"),
     ),
     options: v.array(v.string()),
     correctAnswers: v.array(v.string()),
     questionId: v.string(),
     matchingPairs: v.optional(v.array(v.object({
       prompt: v.string(),
-      answer: v.string()
+      answer: v.string(),
     }))),
+    matchingAnswers: v.optional(v.array(v.string())),
+    sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("questions", {
+    return ctx.db.insert("questions", {
       testId: args.testId,
       text: args.text,
       type: args.type,
@@ -189,6 +230,9 @@ export const addQuestion = internalMutation({
       correctAnswers: args.correctAnswers,
       questionId: args.questionId,
       matchingPairs: args.matchingPairs,
+      matchingAnswers: args.matchingAnswers,
+      sortOrder: args.sortOrder ?? 0,
+      updatedAt: Date.now(),
     });
   },
 });

@@ -1,397 +1,311 @@
-import { query, mutation } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import {
+  normalizedImportTestSchema,
+  parseImportJson,
+  parseQuestionInput,
+  testStatusSchema,
+  type NormalizedImportTest,
+  type QuestionInput,
+} from "../shared/adminSchema";
 
-// Hash function for admin password (simple SHA-256)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+const ADMIN_PASSWORD = "admin123";
+
+const questionTypeValidator = v.union(
+  v.literal("mcq"),
+  v.literal("tf"),
+  v.literal("ms"),
+  v.literal("matching"),
+  v.literal("fib"),
+);
+
+const statusValidator = v.union(v.literal("draft"), v.literal("published"));
+
+const matchingPairValidator = v.object({
+  prompt: v.string(),
+  answer: v.string(),
+});
+
+const questionInputValidator = v.object({
+  questionId: v.optional(v.string()),
+  text: v.string(),
+  type: questionTypeValidator,
+  options: v.optional(v.array(v.string())),
+  correctAnswers: v.array(v.string()),
+  matchingPairs: v.optional(v.array(matchingPairValidator)),
+  matchingAnswers: v.optional(v.array(v.string())),
+});
+
+const normalizedImportTestValidator = v.object({
+  name: v.string(),
+  description: v.optional(v.string()),
+  questions: v.array(
+    v.object({
+      questionId: v.string(),
+      text: v.string(),
+      type: questionTypeValidator,
+      options: v.optional(v.array(v.string())),
+      correctAnswers: v.array(v.string()),
+      matchingPairs: v.optional(v.array(matchingPairValidator)),
+      matchingAnswers: v.optional(v.array(v.string())),
+    }),
+  ),
+});
+
+function readOptionalString(
+  document: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = document[key];
+  return typeof value === "string" ? value : undefined;
 }
 
-// Admin password - should be set via environment variable or initial setup
-// For this demo, we'll use a default password "admin123"
-const DEFAULT_ADMIN_PASSWORD = "admin123";
+function readOptionalNumber(
+  document: Record<string, unknown>,
+  key: string,
+): number | undefined {
+  const value = document[key];
+  return typeof value === "number" ? value : undefined;
+}
 
-// Check if admin is already configured
-export const isAdminConfigured = query({
-  args: {},
-  handler: async (ctx) => {
-    const configs = await ctx.db.query("adminConfig").collect();
-    return configs.length > 0;
-  },
-});
+function getTestStatus(test: Record<string, unknown>): "draft" | "published" {
+  return readOptionalString(test, "status") === "draft" ? "draft" : "published";
+}
 
-// Initialize admin password (can only be called once)
-export const initializeAdmin = mutation({
-  args: {
-    password: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // Check if admin already exists
-    const existingConfigs = await ctx.db.query("adminConfig").collect();
-    if (existingConfigs.length > 0) {
-      throw new Error("Admin already configured");
+function getTestSortOrder(
+  test: { _creationTime: number } & Record<string, unknown>,
+  fallback: number,
+): number {
+  return readOptionalNumber(test, "sortOrder") ?? fallback;
+}
+
+function getQuestionSortOrder(
+  question: { _creationTime: number } & Record<string, unknown>,
+  fallback: number,
+): number {
+  return readOptionalNumber(question, "sortOrder") ?? fallback;
+}
+
+function getUpdatedAt(
+  document: { _creationTime: number } & Record<string, unknown>,
+): number {
+  return readOptionalNumber(document, "updatedAt") ?? document._creationTime;
+}
+
+async function getAllTests(ctx: QueryCtx | MutationCtx) {
+  const tests = await ctx.db.query("tests").collect();
+  return tests
+    .map((test, index) => ({
+      ...test,
+      status: getTestStatus(test),
+      sortOrder: getTestSortOrder(test, index),
+      updatedAt: getUpdatedAt(test),
+    }))
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+}
+
+async function getQuestionsForTest(
+  ctx: QueryCtx | MutationCtx,
+  testId: Id<"tests">,
+) {
+  const questions = await ctx.db
+    .query("questions")
+    .withIndex("by_testId", (query) => query.eq("testId", testId))
+    .collect();
+
+  return questions
+    .map((question, index) => ({
+      ...question,
+      sortOrder: getQuestionSortOrder(question, index),
+      updatedAt: getUpdatedAt(question),
+    }))
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+}
+
+async function backfillAdminDataShape(ctx: MutationCtx) {
+  const now = Date.now();
+  const tests = await ctx.db.query("tests").collect();
+  const sortedTests = [...tests].sort(
+    (left, right) => left._creationTime - right._creationTime,
+  );
+
+  for (const [index, test] of sortedTests.entries()) {
+    const record = test as Record<string, unknown>;
+    const patch: Partial<{
+      status: "draft" | "published";
+      sortOrder: number;
+      updatedAt: number;
+    }> = {};
+
+    if (readOptionalString(record, "status") !== "draft" && readOptionalString(record, "status") !== "published") {
+      patch.status = "published";
+    }
+    if (readOptionalNumber(record, "sortOrder") === undefined) {
+      patch.sortOrder = index;
+    }
+    if (readOptionalNumber(record, "updatedAt") === undefined) {
+      patch.updatedAt = now;
     }
 
-    const password = args.password || DEFAULT_ADMIN_PASSWORD;
-    const passwordHash = await hashPassword(password);
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(test._id, patch);
+    }
+  }
 
-    await ctx.db.insert("adminConfig", {
-      passwordHash,
-      createdAt: Date.now(),
-    });
+  for (const test of sortedTests) {
+    const questions = await ctx.db
+      .query("questions")
+      .withIndex("by_testId", (query) => query.eq("testId", test._id))
+      .collect();
+    const sortedQuestions = [...questions].sort(
+      (left, right) => left._creationTime - right._creationTime,
+    );
 
-    return { success: true, message: "Admin configured successfully" };
+    for (const [index, question] of sortedQuestions.entries()) {
+      const record = question as Record<string, unknown>;
+      const patch: Partial<{
+        sortOrder: number;
+        updatedAt: number;
+      }> = {};
+
+      if (readOptionalNumber(record, "sortOrder") === undefined) {
+        patch.sortOrder = index;
+      }
+      if (readOptionalNumber(record, "updatedAt") === undefined) {
+        patch.updatedAt = now;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(question._id, patch);
+      }
+    }
+  }
+}
+
+async function ensureUniqueQuestionId(
+  ctx: QueryCtx | MutationCtx,
+  testId: Id<"tests">,
+  questionId: string,
+  excludeQuestionId?: Id<"questions">,
+) {
+  const existingQuestions = await ctx.db
+    .query("questions")
+    .withIndex("by_testId", (query) => query.eq("testId", testId))
+    .collect();
+
+  const conflict = existingQuestions.find((question) => {
+    return question.questionId === questionId && question._id !== excludeQuestionId;
+  });
+
+  if (conflict) {
+    throw new Error(`Question ID "${questionId}" already exists in this test.`);
+  }
+}
+
+async function generateQuestionId(
+  ctx: QueryCtx | MutationCtx,
+  testId: Id<"tests">,
+) {
+  const existingQuestions = await ctx.db
+    .query("questions")
+    .withIndex("by_testId", (query) => query.eq("testId", testId))
+    .collect();
+
+  const existingIds = new Set(existingQuestions.map((question) => question.questionId));
+  let nextNumber = 1;
+  while (existingIds.has(`q${nextNumber}`)) {
+    nextNumber += 1;
+  }
+  return `q${nextNumber}`;
+}
+
+async function normalizeQuestionForWrite(
+  testId: Id<"tests">,
+  input: QuestionInput,
+  ctx: QueryCtx | MutationCtx,
+  existingQuestionId?: Id<"questions">,
+  fallbackQuestionId?: string,
+) {
+  const parsed = parseQuestionInput(input);
+  if (!parsed.success) {
+    throw new Error(
+      Object.values(parsed.errors.fieldErrors)
+        .flatMap((messages) => messages ?? [])
+        .concat(parsed.errors.formErrors)
+        .join(" "),
+    );
+  }
+
+  const normalized = parsed.data;
+  const questionId =
+    normalized.questionId ?? fallbackQuestionId ?? (await generateQuestionId(ctx, testId));
+  await ensureUniqueQuestionId(ctx, testId, questionId, existingQuestionId);
+
+  return {
+    ...normalized,
+    questionId,
+  };
+}
+
+function requireAdminPassword(password: string | undefined) {
+  if (password !== ADMIN_PASSWORD) {
+    throw new Error("Invalid admin password.");
+  }
+}
+
+export const getAdminAccess = query({
+  args: {
+    adminPassword: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    return {
+      isAdmin: args.adminPassword === ADMIN_PASSWORD,
+      canBootstrap: false,
+      email: "Hard-coded admin",
+    };
   },
 });
 
-// Verify admin password
 export const verifyAdminPassword = mutation({
   args: {
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    const configs = await ctx.db.query("adminConfig").collect();
-    if (configs.length === 0) {
-      // Auto-initialize with default password if not configured
-      const passwordHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
-      await ctx.db.insert("adminConfig", {
-        passwordHash,
-        createdAt: Date.now(),
-      });
-
-      // Verify against the newly created password
-      return args.password === DEFAULT_ADMIN_PASSWORD;
+    const isValid = args.password === ADMIN_PASSWORD;
+    if (isValid) {
+      await backfillAdminDataShape(ctx);
     }
-
-    const config = configs[0];
-    const passwordHash = await hashPassword(args.password);
-    return passwordHash === config.passwordHash;
+    return isValid;
   },
 });
 
-// Update admin password
-export const updateAdminPassword = mutation({
+export const ensureAdminData = mutation({
   args: {
-    currentPassword: v.string(),
-    newPassword: v.string(),
+    adminPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    // Verify current password
-    const configs = await ctx.db.query("adminConfig").collect();
-    if (configs.length === 0) {
-      throw new Error("Admin not configured");
-    }
-
-    const config = configs[0];
-    const currentHash = await hashPassword(args.currentPassword);
-    if (currentHash !== config.passwordHash) {
-      throw new Error("Current password is incorrect");
-    }
-
-    // Update to new password
-    const newHash = await hashPassword(args.newPassword);
-    await ctx.db.patch(config._id, {
-      passwordHash: newHash,
-      createdAt: Date.now(),
-    });
-
-    return { success: true, message: "Password updated successfully" };
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+    return { success: true };
   },
 });
 
-// Validation helper for questions
-function validateQuestion(question: any, index: number): string[] {
-  const errors: string[] = [];
-  const questionNum = index + 1;
-
-  // Check required fields
-  if (!question.id) {
-    errors.push(`Question ${questionNum}: Missing "id" field`);
-  }
-  if (!question.text) {
-    errors.push(`Question ${questionNum}: Missing "text" field`);
-  }
-  if (!question.type) {
-    errors.push(`Question ${questionNum}: Missing "type" field`);
-  }
-  if (!question.correctAnswers || !Array.isArray(question.correctAnswers)) {
-    errors.push(
-      `Question ${questionNum}: Missing or invalid "correctAnswers" field (must be an array)`,
-    );
-  }
-
-  // Validate question type
-  const validTypes = ["mcq", "tf", "ms", "matching", "fib"];
-  if (question.type && !validTypes.includes(question.type)) {
-    errors.push(
-      `Question ${questionNum}: Invalid type "${question.type}". Must be one of: ${validTypes.join(", ")}`,
-    );
-  }
-
-  // Type-specific validation
-  if (question.type) {
-    switch (question.type) {
-      case "mcq":
-        if (!question.options || question.options.length < 2) {
-          errors.push(
-            `Question ${questionNum} (MCQ): Must have at least 2 options`,
-          );
-        }
-        if (question.correctAnswers && question.correctAnswers.length !== 1) {
-          errors.push(
-            `Question ${questionNum} (MCQ): Must have exactly 1 correct answer`,
-          );
-        }
-        break;
-
-      case "tf":
-        if (!question.options || question.options.length !== 2) {
-          errors.push(
-            `Question ${questionNum} (True/False): Must have exactly 2 options (True, False)`,
-          );
-        }
-        if (question.correctAnswers && question.correctAnswers.length !== 1) {
-          errors.push(
-            `Question ${questionNum} (True/False): Must have exactly 1 correct answer`,
-          );
-        }
-        if (
-          question.correctAnswers &&
-          !["True", "False"].includes(question.correctAnswers[0])
-        ) {
-          errors.push(
-            `Question ${questionNum} (True/False): Correct answer must be "True" or "False"`,
-          );
-        }
-        break;
-
-      case "ms":
-        if (!question.options || question.options.length < 2) {
-          errors.push(
-            `Question ${questionNum} (Multiple Select): Must have at least 2 options`,
-          );
-        }
-        if (question.correctAnswers && question.correctAnswers.length < 1) {
-          errors.push(
-            `Question ${questionNum} (Multiple Select): Must have at least 1 correct answer`,
-          );
-        }
-        break;
-
-      case "matching":
-        if (
-          !question.matchingPairs ||
-          !Array.isArray(question.matchingPairs) ||
-          question.matchingPairs.length < 2
-        ) {
-          errors.push(
-            `Question ${questionNum} (Matching): Must have at least 2 matching pairs`,
-          );
-        }
-        if (question.matchingPairs) {
-          question.matchingPairs.forEach((pair: any, pairIndex: number) => {
-            if (!pair.prompt) {
-              errors.push(
-                `Question ${questionNum} (Matching): Pair ${pairIndex + 1} is missing "prompt"`,
-              );
-            }
-            if (!pair.answer) {
-              errors.push(
-                `Question ${questionNum} (Matching): Pair ${pairIndex + 1} is missing "answer"`,
-              );
-            }
-          });
-        }
-        if (question.matchingAnswers !== undefined) {
-          if (!Array.isArray(question.matchingAnswers)) {
-            errors.push(
-              `Question ${questionNum} (Matching): "matchingAnswers" must be an array`,
-            );
-          } else if (question.matchingAnswers.length === 0) {
-            errors.push(
-              `Question ${questionNum} (Matching): "matchingAnswers" cannot be empty if provided`,
-            );
-          } else {
-            const pairs: { answer: string }[] = question.matchingPairs || [];
-            const uniquePairAnswers = [...new Set(pairs.map((p) => p.answer))];
-            const missingAnswers = uniquePairAnswers.filter(
-              (answer) => !question.matchingAnswers.includes(answer),
-            );
-            if (missingAnswers.length > 0) {
-              errors.push(
-                `Question ${questionNum} (Matching): All answers from matchingPairs must be included in matchingAnswers. Missing: ${missingAnswers.join(", ")}`,
-              );
-            }
-          }
-        }
-        break;
-
-      case "fib":
-        if (!question.correctAnswers || question.correctAnswers.length < 1) {
-          errors.push(
-            `Question ${questionNum} (Fill-in-the-Blank): Must have at least 1 correct answer`,
-          );
-        }
-        const blankCount = question.text?.match(/_{3,}/g)?.length || 0;
-        if (
-          blankCount > 1 &&
-          question.correctAnswers &&
-          question.correctAnswers.length < blankCount
-        ) {
-          errors.push(
-            `Question ${questionNum} (Fill-in-the-Blank): Found ${blankCount} blanks in text, but only ${question.correctAnswers.length} answers provided`,
-          );
-        }
-        break;
-    }
-  }
-
-  return errors;
-}
-
-// Validate test JSON structure
-export const validateTestJson = mutation({
+export const getAdminTests = query({
   args: {
-    jsonData: v.string(),
+    adminPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    try {
-      const data = JSON.parse(args.jsonData);
-      const errors: string[] = [];
-      const tests: any[] = [];
+    requireAdminPassword(args.adminPassword);
+    const tests = await getAllTests(ctx);
 
-      // Handle both single test and array of tests
-      const testArray = Array.isArray(data) ? data : [data];
-
-      if (testArray.length === 0) {
-        return {
-          valid: false,
-          errors: ["No tests found in JSON"],
-          tests: [],
-        };
-      }
-
-      testArray.forEach((test, testIndex) => {
-        const testNum = testIndex + 1;
-
-        // Validate test structure
-        if (!test.name) {
-          errors.push(`Test ${testNum}: Missing "name" field`);
-        }
-        if (!test.questions || !Array.isArray(test.questions)) {
-          errors.push(
-            `Test ${testNum}: Missing or invalid "questions" field (must be an array)`,
-          );
-        } else if (test.questions.length === 0) {
-          errors.push(`Test ${testNum}: Questions array cannot be empty`);
-        } else {
-          // Validate each question
-          test.questions.forEach((question: any, qIndex: number) => {
-            const questionErrors = validateQuestion(question, qIndex);
-            errors.push(...questionErrors);
-          });
-        }
-
-        // Prepare preview data
-        if (test.name && test.questions) {
-          const questionBreakdown: Record<string, number> = {};
-          test.questions.forEach((q: any) => {
-            if (q.type) {
-              questionBreakdown[q.type] = (questionBreakdown[q.type] || 0) + 1;
-            }
-          });
-
-          tests.push({
-            name: test.name,
-            description: test.description || "",
-            questionCount: test.questions.length,
-            questionBreakdown,
-          });
-        }
-      });
-
-      return {
-        valid: errors.length === 0,
-        errors,
-        tests,
-      };
-    } catch (error) {
-      return {
-        valid: false,
-        errors: [
-          `Invalid JSON: ${error instanceof Error ? error.message : "Unknown error"}`,
-        ],
-        tests: [],
-      };
-    }
-  },
-});
-
-// Import tests from JSON
-export const importTestsFromJson = mutation({
-  args: {
-    jsonData: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const data = JSON.parse(args.jsonData);
-    const testArray = Array.isArray(data) ? data : [data];
-    const importedTests: string[] = [];
-    const errors: string[] = [];
-
-    for (const testData of testArray) {
-      try {
-        // Create test
-        const testId = await ctx.db.insert("tests", {
-          name: testData.name,
-          description: testData.description,
-        });
-
-        // Create questions
-        for (const question of testData.questions) {
-          await ctx.db.insert("questions", {
-            testId,
-            text: question.text,
-            type: question.type,
-            options: question.options || [],
-            correctAnswers: question.correctAnswers,
-            questionId: question.id,
-            matchingPairs: question.matchingPairs,
-            matchingAnswers: question.matchingAnswers,
-          });
-        }
-
-        importedTests.push(testData.name);
-      } catch (error) {
-        errors.push(
-          `Failed to import "${testData.name}": ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
-      }
-    }
-
-    return {
-      success: errors.length === 0,
-      importedCount: importedTests.length,
-      importedTests,
-      errors,
-    };
-  },
-});
-
-// Get all tests for admin dashboard
-export const getAllTests = query({
-  args: {},
-  handler: async (ctx) => {
-    const tests = await ctx.db.query("tests").collect();
     return Promise.all(
       tests.map(async (test) => {
         const questions = await ctx.db
           .query("questions")
-          .withIndex("by_testId", (q) => q.eq("testId", test._id))
+          .withIndex("by_testId", (query) => query.eq("testId", test._id))
           .collect();
+
         return {
           ...test,
           questionCount: questions.length,
@@ -401,175 +315,512 @@ export const getAllTests = query({
   },
 });
 
-// Get a single test with all questions
-export const getTestWithQuestions = query({
+export const getTestEditor = query({
   args: {
+    adminPassword: v.string(),
     testId: v.id("tests"),
   },
   handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
     const test = await ctx.db.get(args.testId);
     if (!test) {
-      throw new Error("Test not found");
+      throw new Error("Test not found.");
     }
-    const questions = await ctx.db
-      .query("questions")
-      .withIndex("by_testId", (q) => q.eq("testId", args.testId))
-      .collect();
+
+    const questions = await getQuestionsForTest(ctx, args.testId);
+
     return {
-      test,
+      test: {
+        ...test,
+        status: getTestStatus(test),
+        sortOrder: getTestSortOrder(test, 0),
+        updatedAt: getUpdatedAt(test),
+      },
       questions,
     };
   },
 });
 
-// Create a new test
-export const createTest = mutation({
+export const createTestDraft = mutation({
   args: {
+    adminPassword: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const testId = await ctx.db.insert("tests", {
-      name: args.name,
-      description: args.description,
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const name = args.name.trim();
+    if (!name) {
+      throw new Error("Test name is required.");
+    }
+
+    const tests = await getAllTests(ctx);
+    const sortOrder =
+      tests.length === 0
+        ? 0
+        : Math.max(...tests.map((test) => test.sortOrder)) + 1;
+    const now = Date.now();
+
+    return ctx.db.insert("tests", {
+      name,
+      description: args.description?.trim() || undefined,
+      status: "draft",
+      sortOrder,
+      updatedAt: now,
     });
-    return testId;
   },
 });
 
-// Update a test
-export const updateTest = mutation({
+export const updateTestDetails = mutation({
   args: {
+    adminPassword: v.string(),
     testId: v.id("tests"),
     name: v.string(),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+
+    const name = args.name.trim();
+    if (!name) {
+      throw new Error("Test name is required.");
+    }
+
     await ctx.db.patch(args.testId, {
-      name: args.name,
-      description: args.description,
+      name,
+      description: args.description?.trim() || undefined,
+      updatedAt: Date.now(),
     });
+
     return { success: true };
   },
 });
 
-// Delete a test
-export const deleteTest = mutation({
+export const setTestStatus = mutation({
   args: {
+    adminPassword: v.string(),
+    testId: v.id("tests"),
+    status: statusValidator,
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const parsedStatus = testStatusSchema.parse(args.status);
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+
+    await ctx.db.patch(args.testId, {
+      status: parsedStatus,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+export const deleteTestCascade = mutation({
+  args: {
+    adminPassword: v.string(),
     testId: v.id("tests"),
   },
   handler: async (ctx, args) => {
-    // Delete all questions associated with the test
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+
     const questions = await ctx.db
       .query("questions")
-      .withIndex("by_testId", (q) => q.eq("testId", args.testId))
+      .withIndex("by_testId", (query) => query.eq("testId", args.testId))
       .collect();
 
     for (const question of questions) {
       await ctx.db.delete(question._id);
     }
 
-    // Delete the test
     await ctx.db.delete(args.testId);
     return { success: true };
   },
 });
 
-// Add a question to a test
-export const addQuestion = mutation({
+export const createQuestion = mutation({
   args: {
+    adminPassword: v.string(),
     testId: v.id("tests"),
-    text: v.string(),
-    type: v.union(
-      v.literal("mcq"),
-      v.literal("tf"),
-      v.literal("ms"),
-      v.literal("matching"),
-      v.literal("fib"),
-    ),
-    options: v.optional(v.array(v.string())),
-    correctAnswers: v.array(v.string()),
-    matchingPairs: v.optional(
-      v.array(
-        v.object({
-          prompt: v.string(),
-          answer: v.string(),
-        }),
-      ),
-    ),
-    matchingAnswers: v.optional(v.array(v.string())),
+    input: questionInputValidator,
   },
   handler: async (ctx, args) => {
-    // Generate a unique question ID
-    const questions = await ctx.db
-      .query("questions")
-      .withIndex("by_testId", (q) => q.eq("testId", args.testId))
-      .collect();
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
 
-    const existingIds = new Set(questions.map((q) => q.questionId));
-    let newId = 1;
-    while (existingIds.has(`q${newId}`)) {
-      newId++;
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found.");
     }
+
+    const normalized = await normalizeQuestionForWrite(
+      args.testId,
+      args.input,
+      ctx,
+    );
+    const questions = await getQuestionsForTest(ctx, args.testId);
+    const sortOrder =
+      questions.length === 0
+        ? 0
+        : Math.max(...questions.map((question) => question.sortOrder)) + 1;
+    const now = Date.now();
 
     const questionId = await ctx.db.insert("questions", {
       testId: args.testId,
-      text: args.text,
-      type: args.type,
-      options: args.options || [],
-      correctAnswers: args.correctAnswers,
-      questionId: `q${newId}`,
-      matchingPairs: args.matchingPairs,
-      matchingAnswers: args.matchingAnswers,
+      questionId: normalized.questionId,
+      text: normalized.text,
+      type: normalized.type,
+      options: normalized.options ?? [],
+      correctAnswers: normalized.correctAnswers,
+      matchingPairs:
+        normalized.matchingPairs.length > 0 ? normalized.matchingPairs : undefined,
+      matchingAnswers:
+        normalized.matchingAnswers.length > 0
+          ? normalized.matchingAnswers
+          : undefined,
+      sortOrder,
+      updatedAt: now,
     });
+
+    await ctx.db.patch(args.testId, { updatedAt: now });
+
     return questionId;
   },
 });
 
-// Update a question
 export const updateQuestion = mutation({
   args: {
+    adminPassword: v.string(),
     questionId: v.id("questions"),
-    text: v.string(),
-    type: v.union(
-      v.literal("mcq"),
-      v.literal("tf"),
-      v.literal("ms"),
-      v.literal("matching"),
-      v.literal("fib"),
-    ),
-    options: v.optional(v.array(v.string())),
-    correctAnswers: v.array(v.string()),
-    matchingPairs: v.optional(
-      v.array(
-        v.object({
-          prompt: v.string(),
-          answer: v.string(),
-        }),
-      ),
-    ),
-    matchingAnswers: v.optional(v.array(v.string())),
+    input: questionInputValidator,
   },
   handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) {
+      throw new Error("Question not found.");
+    }
+
+    const normalized = await normalizeQuestionForWrite(
+      question.testId,
+      args.input,
+      ctx,
+      question._id,
+      question.questionId,
+    );
+    const now = Date.now();
+
     await ctx.db.patch(args.questionId, {
-      text: args.text,
-      type: args.type,
-      options: args.options || [],
-      correctAnswers: args.correctAnswers,
-      matchingPairs: args.matchingPairs,
-      matchingAnswers: args.matchingAnswers,
+      questionId: normalized.questionId,
+      text: normalized.text,
+      type: normalized.type,
+      options: normalized.options ?? [],
+      correctAnswers: normalized.correctAnswers,
+      matchingPairs:
+        normalized.matchingPairs.length > 0 ? normalized.matchingPairs : undefined,
+      matchingAnswers:
+        normalized.matchingAnswers.length > 0
+          ? normalized.matchingAnswers
+          : undefined,
+      updatedAt: now,
     });
+
+    await ctx.db.patch(question.testId, { updatedAt: now });
+
     return { success: true };
   },
 });
 
-// Delete a question
-export const deleteQuestion = mutation({
+export const duplicateQuestion = mutation({
   args: {
+    adminPassword: v.string(),
     questionId: v.id("questions"),
   },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.questionId);
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) {
+      throw new Error("Question not found.");
+    }
+
+    const questions = await getQuestionsForTest(ctx, question.testId);
+    const sourceIndex = questions.findIndex(
+      (currentQuestion) => currentQuestion._id === args.questionId,
+    );
+    if (sourceIndex === -1) {
+      throw new Error("Question not found in its test.");
+    }
+
+    const now = Date.now();
+    for (let index = sourceIndex + 1; index < questions.length; index += 1) {
+      await ctx.db.patch(questions[index]._id, {
+        sortOrder: questions[index].sortOrder + 1,
+        updatedAt: now,
+      });
+    }
+
+    const duplicatedQuestionId = await generateQuestionId(ctx, question.testId);
+    const newQuestionId = await ctx.db.insert("questions", {
+      testId: question.testId,
+      questionId: duplicatedQuestionId,
+      text: `${question.text} (Copy)`,
+      type: question.type,
+      options: question.options,
+      correctAnswers: question.correctAnswers,
+      matchingPairs: question.matchingPairs,
+      matchingAnswers: question.matchingAnswers,
+      sortOrder: questions[sourceIndex].sortOrder + 1,
+      updatedAt: now,
+    });
+
+    await ctx.db.patch(question.testId, { updatedAt: now });
+
+    return newQuestionId;
+  },
+});
+
+export const deleteQuestionsBulk = mutation({
+  args: {
+    adminPassword: v.string(),
+    testId: v.id("tests"),
+    questionIds: v.array(v.id("questions")),
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    if (args.questionIds.length === 0) {
+      throw new Error("Select at least one question to delete.");
+    }
+
+    const test = await ctx.db.get(args.testId);
+    if (!test) {
+      throw new Error("Test not found.");
+    }
+
+    const questions = await getQuestionsForTest(ctx, args.testId);
+    const selectedIds = new Set(args.questionIds);
+
+    if (questions.filter((question) => selectedIds.has(question._id)).length !== selectedIds.size) {
+      throw new Error("One or more selected questions do not belong to this test.");
+    }
+
+    const remainingQuestions = questions.filter(
+      (question) => !selectedIds.has(question._id),
+    );
+
+    for (const questionId of args.questionIds) {
+      await ctx.db.delete(questionId);
+    }
+
+    const now = Date.now();
+    for (const [index, question] of remainingQuestions.entries()) {
+      await ctx.db.patch(question._id, {
+        sortOrder: index,
+        updatedAt: now,
+      });
+    }
+
+    await ctx.db.patch(args.testId, { updatedAt: now });
+
     return { success: true };
+  },
+});
+
+export const reorderQuestions = mutation({
+  args: {
+    adminPassword: v.string(),
+    testId: v.id("tests"),
+    orderedQuestionIds: v.array(v.id("questions")),
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const questions = await getQuestionsForTest(ctx, args.testId);
+    if (questions.length !== args.orderedQuestionIds.length) {
+      throw new Error("Question reorder payload is incomplete.");
+    }
+
+    const currentIds = new Set(questions.map((question) => question._id));
+    const orderedIds = new Set(args.orderedQuestionIds);
+    if (currentIds.size !== orderedIds.size) {
+      throw new Error("Question reorder payload contains duplicate IDs.");
+    }
+
+    for (const questionId of args.orderedQuestionIds) {
+      if (!currentIds.has(questionId)) {
+        throw new Error("Question reorder payload contains an invalid question.");
+      }
+    }
+
+    const now = Date.now();
+    for (const [index, questionId] of args.orderedQuestionIds.entries()) {
+      await ctx.db.patch(questionId, {
+        sortOrder: index,
+        updatedAt: now,
+      });
+    }
+
+    await ctx.db.patch(args.testId, { updatedAt: now });
+
+    return { success: true };
+  },
+});
+
+export const previewImport = mutation({
+  args: {
+    adminPassword: v.string(),
+    jsonData: v.string(),
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    return parseImportJson(args.jsonData);
+  },
+});
+
+function validateNormalizedImportTests(
+  normalizedTests: Array<{
+    name: string;
+    description?: string;
+    questions: Array<QuestionInput & { questionId: string }>;
+  }>,
+) {
+  const errors: string[] = [];
+  const parsedTests: NormalizedImportTest[] = [];
+
+  normalizedTests.forEach((test, testIndex) => {
+    const questionIds = test.questions.map((question) => question.questionId.trim());
+    if (questionIds.length !== new Set(questionIds).size) {
+      errors.push(`Test ${testIndex + 1}: question ids must be unique.`);
+    }
+
+    const parsedQuestions: NormalizedImportTest["questions"] = [];
+    test.questions.forEach((question, questionIndex) => {
+      const questionResult = parseQuestionInput(question);
+      if (!questionResult.success) {
+        errors.push(
+          ...Object.values(questionResult.errors.fieldErrors)
+            .flatMap((messages) => messages ?? [])
+            .map(
+              (message) =>
+                `Test ${testIndex + 1}, question ${questionIndex + 1}: ${message}`,
+            ),
+        );
+        return;
+      }
+
+      parsedQuestions.push({
+        ...questionResult.data,
+        questionId: question.questionId.trim(),
+      });
+    });
+
+    const schemaResult = normalizedImportTestSchema.safeParse({
+      name: test.name.trim(),
+      description: test.description?.trim() || undefined,
+      questions: parsedQuestions,
+    });
+    if (!schemaResult.success) {
+      errors.push(
+        ...schemaResult.error.issues.map((issue) => {
+          const field = issue.path.join(".") || "test";
+          return `Test ${testIndex + 1}, ${field}: ${issue.message}`;
+        }),
+      );
+      return;
+    }
+
+    parsedTests.push(schemaResult.data);
+  });
+
+  return {
+    errors,
+    tests: parsedTests,
+  };
+}
+
+export const importTests = mutation({
+  args: {
+    adminPassword: v.string(),
+    normalizedTests: v.array(normalizedImportTestValidator),
+    publishMode: statusValidator,
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const validation = validateNormalizedImportTests(args.normalizedTests);
+    if (validation.errors.length > 0) {
+      throw new Error(validation.errors.join(" "));
+    }
+
+    const existingTests = await getAllTests(ctx);
+    let nextSortOrder =
+      existingTests.length === 0
+        ? 0
+        : Math.max(...existingTests.map((test) => test.sortOrder)) + 1;
+    const now = Date.now();
+
+    for (const test of validation.tests) {
+      const testId = await ctx.db.insert("tests", {
+        name: test.name.trim(),
+        description: test.description?.trim() || undefined,
+        status: args.publishMode,
+        sortOrder: nextSortOrder,
+        updatedAt: now,
+      });
+
+      for (const [index, question] of test.questions.entries()) {
+        await ctx.db.insert("questions", {
+          testId,
+          questionId: question.questionId,
+          text: question.text.trim(),
+          type: question.type,
+          options: question.options ?? [],
+          correctAnswers: question.correctAnswers,
+          matchingPairs:
+            question.matchingPairs && question.matchingPairs.length > 0
+              ? question.matchingPairs
+              : undefined,
+          matchingAnswers:
+            question.matchingAnswers && question.matchingAnswers.length > 0
+              ? question.matchingAnswers
+              : undefined,
+          sortOrder: index,
+          updatedAt: now,
+        });
+      }
+
+      nextSortOrder += 1;
+    }
+
+    return {
+      success: true,
+      importedCount: validation.tests.length,
+    };
   },
 });

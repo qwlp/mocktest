@@ -57,6 +57,11 @@ export function PracticeTestPage({
   );
 
   const userId = user?._id?.toString() || null;
+  const progressKey =
+    user === undefined ? null : `${testId.toString()}:${userId ?? "guest"}`;
+  const [hydratedProgressKey, setHydratedProgressKey] = useState<string | null>(
+    null,
+  );
 
   // Store a random seed for this session - generated once for new sessions
   const sessionSeedRef = useRef<string | null>(null);
@@ -87,9 +92,31 @@ export function PracticeTestPage({
     Map<string, string[]>
   >(new Map());
 
-  // Initialize shuffled matching orders when questions load
+  // Check for saved progress before initializing matching shuffles.
   useEffect(() => {
-    if (!questions) return;
+    if (!progressKey) {
+      setSavedProgress(null);
+      setShowResumeDialog(false);
+      setHydratedProgressKey(null);
+      setShuffledMatchingOrders(new Map());
+      return;
+    }
+
+    cleanupExpiredProgress();
+
+    const progress = userId ? loadTestProgress(testId, userId) : null;
+    setSavedProgress(progress);
+    setShowResumeDialog(Boolean(progress));
+    setHydratedProgressKey(progressKey);
+    setShuffledMatchingOrders(new Map());
+  }, [progressKey, testId, userId]);
+
+  const isSavedProgressHydrated =
+    progressKey !== null && hydratedProgressKey === progressKey;
+
+  // Initialize shuffled matching orders once saved progress has been resolved.
+  useEffect(() => {
+    if (!questions || !isSavedProgressHydrated) return;
 
     // Generate a random seed for new sessions (no saved progress)
     if (!savedProgress && !sessionSeedRef.current) {
@@ -139,37 +166,12 @@ export function PracticeTestPage({
       }
     });
     setShuffledMatchingOrders(newShuffledOrders);
-  }, [questions, savedProgress, seededShuffle]);
-
-  // Check for saved progress on mount
-  useEffect(() => {
-    // Clean up any expired progress
-    cleanupExpiredProgress();
-
-    if (userId) {
-      const progress = loadTestProgress(testId, userId);
-      if (progress) {
-        setSavedProgress(progress);
-        setShowResumeDialog(true);
-      }
-    }
-  }, [testId, userId]);
+  }, [questions, savedProgress, seededShuffle, isSavedProgressHydrated]);
 
   const handleResume = () => {
     setShowResumeDialog(false);
     // Progress is already loaded via savedProgress state
   };
-
-  const handleShuffledMatchingAnswersChange = useCallback(
-    (questionId: string, answers: string[]) => {
-      setShuffledMatchingOrders((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(questionId, answers);
-        return newMap;
-      });
-    },
-    [],
-  );
 
   const handleStartFresh = () => {
     if (userId) {
@@ -203,6 +205,7 @@ export function PracticeTestPage({
     userId,
     savedProgress,
     shuffledMatchingOrders,
+    canAutoSave: isSavedProgressHydrated && !showResumeDialog,
   });
 
   const currentQuestion = questions?.[currentQuestionIndex];
@@ -460,9 +463,6 @@ export function PracticeTestPage({
                   shuffledMatchingAnswers={shuffledMatchingOrders.get(
                     currentQuestion._id,
                   )}
-                  onShuffledMatchingAnswersChange={
-                    handleShuffledMatchingAnswersChange
-                  }
                 />
 
                 {/* Keyboard hint */}

@@ -12,6 +12,54 @@ export interface KeyboardShortcuts {
   optionsLength: number;
 }
 
+const INTERACTIVE_SHORTCUT_TAGS = new Set([
+  "INPUT",
+  "TEXTAREA",
+  "SELECT",
+  "OPTION",
+  "BUTTON",
+]);
+
+type KeyboardShortcutTarget = {
+  tagName?: string;
+  isContentEditable?: boolean;
+  getAttribute?: (name: string) => string | null;
+};
+
+export function shouldIgnoreKeyboardShortcutTarget(
+  target: EventTarget | null,
+): boolean {
+  if (!target || typeof target !== "object") {
+    return false;
+  }
+
+  const candidate = target as KeyboardShortcutTarget;
+  const tagName =
+    typeof candidate.tagName === "string"
+      ? candidate.tagName.toUpperCase()
+      : null;
+
+  if (tagName && INTERACTIVE_SHORTCUT_TAGS.has(tagName)) {
+    return true;
+  }
+
+  if (candidate.isContentEditable) {
+    return true;
+  }
+
+  const role =
+    typeof candidate.getAttribute === "function"
+      ? candidate.getAttribute("role")
+      : null;
+
+  return (
+    role === "textbox" ||
+    role === "combobox" ||
+    role === "listbox" ||
+    role === "spinbutton"
+  );
+}
+
 export function useKeyboardShortcuts({
   onNextQuestion,
   onPrevQuestion,
@@ -24,15 +72,15 @@ export function useKeyboardShortcuts({
 }: KeyboardShortcuts) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      // Ignore if user is typing in an input field
+      // Ignore shortcuts for interactive controls or events already handled locally.
       if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
+        event.defaultPrevented ||
+        shouldIgnoreKeyboardShortcutTarget(event.target)
       ) {
         return;
       }
 
-      const { key, shiftKey, ctrlKey, metaKey, altKey } = event;
+      const { key, shiftKey, ctrlKey, altKey } = event;
 
       // Navigation shortcuts
       if (key === "ArrowRight" || key === "j" || key === "J") {

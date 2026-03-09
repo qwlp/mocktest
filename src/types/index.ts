@@ -31,10 +31,6 @@ export interface QuestionViewProps {
   showFeedback?: boolean;
   isSubmitted?: boolean;
   shuffledMatchingAnswers?: string[];
-  onShuffledMatchingAnswersChange?: (
-    questionId: string,
-    answers: string[],
-  ) => void;
 }
 
 export interface MatchingQuestionProps {
@@ -44,7 +40,6 @@ export interface MatchingQuestionProps {
   showFeedback?: boolean;
   isSubmitted?: boolean;
   shuffledAnswers?: string[];
-  onShuffledAnswersChange?: (questionId: string, answers: string[]) => void;
 }
 
 export interface FillInBlankQuestionProps {
@@ -81,4 +76,10 @@ export interface Progress {
   current: number;
   total: number;
   percentage: number;
+}
+
+export interface AdminAccess {
+  isAdmin: boolean;
+  canBootstrap: boolean;
+  email?: string;
 }

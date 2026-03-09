@@ -15,6 +15,7 @@ interface UseTestStateProps {
   userId: string | null;
   savedProgress: SavedTestProgress | null;
   shuffledMatchingOrders?: Map<string, string[]>;
+  canAutoSave: boolean;
 }
 
 interface UseTestStateReturn {
@@ -43,6 +44,7 @@ export function useTestState({
   userId,
   savedProgress,
   shuffledMatchingOrders,
+  canAutoSave,
 }: UseTestStateProps): UseTestStateReturn {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(() => {
     return savedProgress?.currentQuestionIndex ?? 0;
@@ -64,7 +66,7 @@ export function useTestState({
 
   // Auto-save progress to localStorage on every answer change
   useEffect(() => {
-    if (userId && !isSubmitted) {
+    if (userId && !isSubmitted && canAutoSave) {
       saveTestProgress(
         testId,
         userId,
@@ -80,6 +82,7 @@ export function useTestState({
     userId,
     isSubmitted,
     shuffledMatchingOrders,
+    canAutoSave,
   ]);
 
   const currentQuestion = questions?.[currentQuestionIndex];
