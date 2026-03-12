@@ -50,6 +50,13 @@ interface CodeBlockProps {
   isDarkTheme: boolean;
 }
 
+function getIsDarkTheme() {
+  return (
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark")
+  );
+}
+
 function CodeBlock({ language, code, isDarkTheme }: CodeBlockProps) {
   const [copied, setCopied] = React.useState(false);
 
@@ -106,9 +113,26 @@ function CodeBlock({ language, code, isDarkTheme }: CodeBlockProps) {
 }
 
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
-  const isDarkTheme =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  const [isDarkTheme, setIsDarkTheme] = React.useState(getIsDarkTheme);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const root = document.documentElement;
+    const syncTheme = () => setIsDarkTheme(root.classList.contains("dark"));
+
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className={className}>
