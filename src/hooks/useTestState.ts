@@ -14,6 +14,7 @@ interface UseTestStateProps {
   onExitTest: () => void;
   userId: string | null;
   savedProgress: SavedTestProgress | null;
+  shuffledOptionOrders?: Map<string, string[]>;
   shuffledMatchingOrders?: Map<string, string[]>;
   canAutoSave: boolean;
 }
@@ -43,6 +44,7 @@ export function useTestState({
   onExitTest,
   userId,
   savedProgress,
+  shuffledOptionOrders,
   shuffledMatchingOrders,
   canAutoSave,
 }: UseTestStateProps): UseTestStateReturn {
@@ -72,6 +74,7 @@ export function useTestState({
         userId,
         userAnswers,
         currentQuestionIndex,
+        shuffledOptionOrders,
         shuffledMatchingOrders,
       );
     }
@@ -81,6 +84,7 @@ export function useTestState({
     testId,
     userId,
     isSubmitted,
+    shuffledOptionOrders,
     shuffledMatchingOrders,
     canAutoSave,
   ]);

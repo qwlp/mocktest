@@ -30,6 +30,7 @@ export interface QuestionViewProps {
   onAnswerChange: (answer: string[]) => void;
   showFeedback?: boolean;
   isSubmitted?: boolean;
+  shuffledOptions?: string[];
   shuffledMatchingAnswers?: string[];
 }
 

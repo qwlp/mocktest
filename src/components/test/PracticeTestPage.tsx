@@ -91,6 +91,9 @@ export function PracticeTestPage({
   const [shuffledMatchingOrders, setShuffledMatchingOrders] = useState<
     Map<string, string[]>
   >(new Map());
+  const [shuffledOptionOrders, setShuffledOptionOrders] = useState<
+    Map<string, string[]>
+  >(new Map());
 
   // Check for saved progress before initializing matching shuffles.
   useEffect(() => {
@@ -98,6 +101,7 @@ export function PracticeTestPage({
       setSavedProgress(null);
       setShowResumeDialog(false);
       setHydratedProgressKey(null);
+      setShuffledOptionOrders(new Map());
       setShuffledMatchingOrders(new Map());
       return;
     }
@@ -108,13 +112,14 @@ export function PracticeTestPage({
     setSavedProgress(progress);
     setShowResumeDialog(Boolean(progress));
     setHydratedProgressKey(progressKey);
+    setShuffledOptionOrders(new Map());
     setShuffledMatchingOrders(new Map());
   }, [progressKey, testId, userId]);
 
   const isSavedProgressHydrated =
     progressKey !== null && hydratedProgressKey === progressKey;
 
-  // Initialize shuffled matching orders once saved progress has been resolved.
+  // Initialize randomized answer orders once saved progress has been resolved.
   useEffect(() => {
     if (!questions || !isSavedProgressHydrated) return;
 
@@ -124,7 +129,24 @@ export function PracticeTestPage({
     }
 
     const newShuffledOrders = new Map<string, string[]>();
+    const newOptionOrders = new Map<string, string[]>();
     questions.forEach((question) => {
+      if (
+        (question.type === "mcq" || question.type === "ms") &&
+        question.options.length > 1
+      ) {
+        const savedOrder = savedProgress?.shuffledOptionOrders?.[question._id];
+        newOptionOrders.set(
+          question._id,
+          savedOrder?.length === question.options.length
+            ? savedOrder
+            : seededShuffle(
+                question.options,
+                `${sessionSeedRef.current}:${question._id}`,
+              ),
+        );
+      }
+
       if (question.type === "matching" && question.matchingPairs) {
         // Check if we have saved shuffled order for this question from prior session
         const savedOrder =
@@ -160,11 +182,15 @@ export function PracticeTestPage({
           }
           newShuffledOrders.set(
             question._id,
-            seededShuffle(answers, sessionSeedRef.current),
+            seededShuffle(
+              answers,
+              `${sessionSeedRef.current}:${question._id}`,
+            ),
           );
         }
       }
     });
+    setShuffledOptionOrders(newOptionOrders);
     setShuffledMatchingOrders(newShuffledOrders);
   }, [questions, savedProgress, seededShuffle, isSavedProgressHydrated]);
 
@@ -204,6 +230,7 @@ export function PracticeTestPage({
     onExitTest,
     userId,
     savedProgress,
+    shuffledOptionOrders,
     shuffledMatchingOrders,
     canAutoSave: isSavedProgressHydrated && !showResumeDialog,
   });
@@ -244,7 +271,9 @@ export function PracticeTestPage({
     (index: number) => {
       if (!currentQuestion || isSubmitted) return;
 
-      const option = currentQuestion.options[index];
+      const displayedOptions =
+        shuffledOptionOrders.get(currentQuestion._id) ?? currentQuestion.options;
+      const option = displayedOptions[index];
       if (option) {
         if (currentQuestion.type === "mcq" || currentQuestion.type === "tf") {
           handleAnswerChange([option]);
@@ -260,7 +289,13 @@ export function PracticeTestPage({
         }
       }
     },
-    [currentQuestion, isSubmitted, handleAnswerChange, getCurrentAnswerArray],
+    [
+      currentQuestion,
+      isSubmitted,
+      handleAnswerChange,
+      getCurrentAnswerArray,
+      shuffledOptionOrders,
+    ],
   );
 
   const handleJumpToType = useCallback(
@@ -460,6 +495,9 @@ export function PracticeTestPage({
                   onAnswerChange={handleAnswerChange}
                   showFeedback={showFeedback}
                   isSubmitted={isSubmitted}
+                  shuffledOptions={shuffledOptionOrders.get(
+                    currentQuestion._id,
+                  )}
                   shuffledMatchingAnswers={shuffledMatchingOrders.get(
                     currentQuestion._id,
                   )}

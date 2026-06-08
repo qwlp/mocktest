@@ -13,6 +13,7 @@ export function QuestionView({
   onAnswerChange,
   showFeedback = false,
   isSubmitted = false,
+  shuffledOptions,
   shuffledMatchingAnswers,
 }: QuestionViewProps) {
   const handleSingleAnswerChange = (selectedOption: string) => {
@@ -89,7 +90,7 @@ export function QuestionView({
 
   return (
     <div className="space-y-3">
-      {question.options.map((option, index) => {
+      {(shuffledOptions ?? question.options).map((option, index) => {
         const feedback = getOptionFeedback(option);
         const isSelected = userAnswer?.includes(option);
         const optionNumber = index + 1;

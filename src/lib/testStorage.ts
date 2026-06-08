@@ -9,6 +9,8 @@ export interface SavedTestProgress {
   timestamp: number;
   testId: string;
   userId: string;
+  // Store standard option order so resumed attempts keep the same numbering
+  shuffledOptionOrders?: Record<string, string[]>;
   // Store shuffled matching answers per question ID to ensure consistent scoring
   shuffledMatchingOrders?: Record<string, string[]>;
 }
@@ -22,9 +24,17 @@ export function saveTestProgress(
   userId: string,
   userAnswers: UserAnswer[],
   currentQuestionIndex: number,
+  shuffledOptionOrders?: Map<string, string[]>,
   shuffledMatchingOrders?: Map<string, string[]>,
 ): void {
   try {
+    const shuffledOptionsRecord: Record<string, string[]> = {};
+    if (shuffledOptionOrders) {
+      shuffledOptionOrders.forEach((value, key) => {
+        shuffledOptionsRecord[key] = value;
+      });
+    }
+
     // Convert Map to Record for JSON serialization
     const shuffledOrdersRecord: Record<string, string[]> = {};
     if (shuffledMatchingOrders) {
@@ -39,6 +49,10 @@ export function saveTestProgress(
       timestamp: Date.now(),
       testId: testId.toString(),
       userId,
+      shuffledOptionOrders:
+        Object.keys(shuffledOptionsRecord).length > 0
+          ? shuffledOptionsRecord
+          : undefined,
       shuffledMatchingOrders:
         Object.keys(shuffledOrdersRecord).length > 0
           ? shuffledOrdersRecord
