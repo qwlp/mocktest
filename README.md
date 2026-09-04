@@ -24,7 +24,7 @@ Mock Tests is a full-stack practice test app built with React, Vite, Tailwind, a
 ### Prerequisites
 
 - Node.js
-- npm
+- [Bun](https://bun.sh/)
 - A Convex deployment
 
 ### Environment
@@ -35,18 +35,19 @@ This project expects a `.env.local` file with these variables:
 CONVEX_DEPLOY_KEY=...
 CONVEX_DEPLOYMENT=...
 VITE_CONVEX_URL=...
+CONVEX_SITE_URL=...
 ```
 
-If you are connecting this project to a new Convex deployment, run `npx convex dev` and follow the CLI prompts. That will typically populate the local Convex settings you need.
+If you are connecting this project to a new Convex deployment, run `bunx convex dev` and follow the CLI prompts. That will typically populate the local Convex settings you need.
 
 ### Install and run
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
-`npm run dev` starts both:
+`bun run dev` starts both:
 
 - the Vite frontend
 - the Convex development backend
@@ -56,14 +57,14 @@ Once the app is running, open the local Vite URL in your browser and sign in fro
 ## Scripts
 
 ```bash
-npm run dev
-npm run lint
-npm run test
+bun run dev
+bun run lint
+bun run test
 ```
 
-- `npm run dev`: starts Vite and Convex in parallel
-- `npm run lint`: runs TypeScript checks, validates the Convex backend, and builds the frontend
-- `npm run test`: runs the Vitest suite
+- `bun run dev`: starts Vite and Convex in parallel
+- `bun run lint`: runs TypeScript checks, validates the Convex backend, and builds the frontend
+- `bun run test`: runs the Vitest suite
 
 ## Admin workflow
 
