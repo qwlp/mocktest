@@ -313,18 +313,6 @@ body {
   overflow: hidden;
 }
 
-.option-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--color-primary);
-  transform: scaleY(0);
-  transition: transform var(--transition-base);
-}
-
 .option-card:hover {
   border-color: var(--color-border-strong);
   background-color: var(--color-surface-elevated);
@@ -349,10 +337,6 @@ body {
 .light .option-card.selected {
   border-color: var(--color-rose-600);
   background-color: var(--color-rose-50);
-}
-
-.option-card.selected::before {
-  transform: scaleY(1);
 }
 
 .option-card.correct {
