@@ -253,6 +253,8 @@ export function AdminShell({
           {state.view === "import" ? (
             <ImportReview
               adminPassword={adminPassword}
+              folderId={selectedFolderId}
+              folderName={folders.find((folder) => folder._id === selectedFolderId)?.name}
               onDirtyChange={(dirty) =>
                 dispatch({
                   type: "set_dirty_state",

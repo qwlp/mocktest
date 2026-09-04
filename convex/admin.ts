@@ -856,10 +856,15 @@ export const importTests = mutation({
     adminPassword: v.string(),
     normalizedTests: v.array(normalizedImportTestValidator),
     publishMode: statusValidator,
+    folderId: v.optional(v.id("folders")),
   },
   handler: async (ctx, args) => {
     requireAdminPassword(args.adminPassword);
     await backfillAdminDataShape(ctx);
+
+    if (args.folderId && !(await ctx.db.get(args.folderId))) {
+      throw new Error("Folder not found.");
+    }
 
     const validation = validateNormalizedImportTests(args.normalizedTests);
     if (validation.errors.length > 0) {
@@ -880,6 +885,7 @@ export const importTests = mutation({
         status: args.publishMode,
         sortOrder: nextSortOrder,
         updatedAt: now,
+        folderId: args.folderId,
       });
 
       for (const [index, question] of test.questions.entries()) {

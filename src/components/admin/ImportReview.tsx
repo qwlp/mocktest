@@ -4,15 +4,20 @@ import { api } from "../../../convex/_generated/api";
 import { parseImportJson, type ImportValidationResult } from "../../../shared/adminSchema";
 import { Upload, FileJson } from "lucide-react";
 import { toast } from "sonner";
+import { Id } from "../../../convex/_generated/dataModel";
 
 interface ImportReviewProps {
   adminPassword: string;
+  folderId: Id<"folders"> | null;
+  folderName?: string;
   onImported: () => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
 export function ImportReview({
   adminPassword,
+  folderId,
+  folderName,
   onImported,
   onDirtyChange,
 }: ImportReviewProps) {
@@ -74,8 +79,11 @@ export function ImportReview({
         adminPassword,
         normalizedTests: preview.normalizedTests,
         publishMode: "draft",
+        folderId: folderId ?? undefined,
       });
-      toast.success(`Imported ${preview.normalizedTests.length} draft test(s).`);
+      toast.success(
+        `Imported ${preview.normalizedTests.length} draft test(s) to ${folderName ?? "Unfiled quizzes"}.`,
+      );
       setJsonInput("");
       setPreview(null);
       onImported();
@@ -98,7 +106,7 @@ export function ImportReview({
           <div>
             <h2 className="text-xl font-semibold text-[var(--color-text)]">Import JSON</h2>
             <p className="text-sm text-[var(--color-text-secondary)]">
-              Parse, validate, review, then import as drafts.
+              Parse, validate, review, then import as drafts to {folderName ?? "Unfiled quizzes"}.
             </p>
           </div>
         </div>
