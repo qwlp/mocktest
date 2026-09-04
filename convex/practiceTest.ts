@@ -62,6 +62,24 @@ export const getTests = query({
   },
 });
 
+// Folder names and hierarchy are public, but quiz editing remains admin-only.
+export const getFolders = query({
+  args: {},
+  handler: async (ctx) => {
+    const folders = await ctx.db.query("folders").collect();
+    return folders
+      .map(({ _id, name, parentId, sortOrder }) => ({
+        _id,
+        name,
+        parentId,
+        sortOrder,
+      }))
+      .sort((left, right) =>
+        left.sortOrder - right.sortOrder || left.name.localeCompare(right.name),
+      );
+  },
+});
+
 export const getTest = query({
   args: { testId: v.id("tests") },
   handler: async (ctx, args) => {
