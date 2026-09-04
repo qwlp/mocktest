@@ -182,10 +182,6 @@ export default function App() {
                 className="relative p-8 sm:p-12 rounded-2xl shadow-soft-lg border border-[var(--color-border)] overflow-hidden"
                 style={{ backgroundColor: "var(--color-surface)" }}
               >
-                {/* Background decoration */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-[var(--color-primary)]/10 to-transparent rounded-bl-full" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-[var(--color-primary)]/5 to-transparent rounded-tr-full" />
-
                 <div className="relative text-center">
                   <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-[var(--color-primary)] shadow-lg mb-8 float-gentle">
                     <BookOpen className="w-10 h-10 text-white" />

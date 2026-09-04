@@ -66,15 +66,6 @@ function TestCard({
           </div>
         </div>
 
-        {/* Hover glow effect */}
-        <div
-          className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 0%, rgba(179, 136, 163, 0.1) 0%, transparent 70%)",
-            opacity: isHovered ? 1 : 0,
-          }}
-        />
       </div>
     </div>
   );

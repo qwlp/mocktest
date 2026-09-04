@@ -33,21 +33,12 @@ export function ProgressBar({
           style={{ backgroundColor: "var(--color-border)" }}
         >
           <div
-            className="h-full rounded-full transition-all duration-500 ease-out relative"
+            className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-500 ease-out"
             style={{
               width: `${progress}%`,
-              background: `linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%)`,
             }}
-          >
-            {/* Subtle shimmer effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-            {/* Glow effect */}
-            <div className="absolute inset-0 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
-          </div>
+          />
         </div>
-
-        {/* Subtle gradient overlay for depth */}
-        <div className="absolute top-0 left-0 right-0 h-full rounded-full bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
       </div>
     </div>
   );
