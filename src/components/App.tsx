@@ -199,10 +199,6 @@ export default function App() {
 
                   <div className="space-y-4">
                     <AnonymousSignInButton />
-
-                    <p className="text-sm text-[var(--color-text-muted)]">
-                      Quick, easy, and completely free
-                    </p>
                   </div>
                 </div>
               </div>
