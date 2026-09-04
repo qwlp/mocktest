@@ -315,6 +315,89 @@ export const getAdminTests = query({
   },
 });
 
+export const getFolders = query({
+  args: { adminPassword: v.string() },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    const folders = await ctx.db.query("folders").collect();
+    return folders.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  },
+});
+
+export const createFolder = mutation({
+  args: {
+    adminPassword: v.string(),
+    name: v.string(),
+    parentId: v.optional(v.id("folders")),
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    const name = args.name.trim();
+    if (!name) throw new Error("Folder name is required.");
+    if (args.parentId && !(await ctx.db.get(args.parentId))) {
+      throw new Error("Parent folder not found.");
+    }
+    const siblings = await ctx.db
+      .query("folders")
+      .withIndex("by_parentId", (q) => q.eq("parentId", args.parentId))
+      .collect();
+    if (siblings.some((folder) => folder.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error("A folder with that name already exists here.");
+    }
+    return ctx.db.insert("folders", {
+      name,
+      parentId: args.parentId,
+      sortOrder: siblings.length,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const renameFolder = mutation({
+  args: { adminPassword: v.string(), folderId: v.id("folders"), name: v.string() },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    const folder = await ctx.db.get(args.folderId);
+    if (!folder) throw new Error("Folder not found.");
+    const name = args.name.trim();
+    if (!name) throw new Error("Folder name is required.");
+    const siblings = await ctx.db
+      .query("folders")
+      .withIndex("by_parentId", (q) => q.eq("parentId", folder.parentId))
+      .collect();
+    if (siblings.some((item) => item._id !== args.folderId && item.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error("A folder with that name already exists here.");
+    }
+    await ctx.db.patch(args.folderId, { name, updatedAt: Date.now() });
+  },
+});
+
+export const deleteFolder = mutation({
+  args: { adminPassword: v.string(), folderId: v.id("folders") },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    if (!(await ctx.db.get(args.folderId))) throw new Error("Folder not found.");
+    const children = await ctx.db.query("folders").withIndex("by_parentId", (q) => q.eq("parentId", args.folderId)).take(1);
+    const tests = await ctx.db.query("tests").withIndex("by_folderId", (q) => q.eq("folderId", args.folderId)).take(1);
+    if (children.length || tests.length) throw new Error("Move or delete everything in this folder first.");
+    await ctx.db.delete(args.folderId);
+  },
+});
+
+export const moveTestToFolder = mutation({
+  args: {
+    adminPassword: v.string(),
+    testId: v.id("tests"),
+    folderId: v.optional(v.id("folders")),
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    if (!(await ctx.db.get(args.testId))) throw new Error("Test not found.");
+    if (args.folderId && !(await ctx.db.get(args.folderId))) throw new Error("Folder not found.");
+    await ctx.db.patch(args.testId, { folderId: args.folderId, updatedAt: Date.now() });
+  },
+});
+
 export const getTestEditor = query({
   args: {
     adminPassword: v.string(),
@@ -346,6 +429,7 @@ export const createTestDraft = mutation({
     adminPassword: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
+    folderId: v.optional(v.id("folders")),
   },
   handler: async (ctx, args) => {
     requireAdminPassword(args.adminPassword);
@@ -354,6 +438,9 @@ export const createTestDraft = mutation({
     const name = args.name.trim();
     if (!name) {
       throw new Error("Test name is required.");
+    }
+    if (args.folderId && !(await ctx.db.get(args.folderId))) {
+      throw new Error("Folder not found.");
     }
 
     const tests = await getAllTests(ctx);
@@ -369,6 +456,7 @@ export const createTestDraft = mutation({
       status: "draft",
       sortOrder,
       updatedAt: now,
+      folderId: args.folderId,
     });
   },
 });

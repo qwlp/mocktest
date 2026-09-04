@@ -9,7 +9,17 @@ const applicationTables = {
     status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     sortOrder: v.optional(v.number()),
     updatedAt: v.optional(v.number()),
-  }).index("by_status", ["status"]),
+    folderId: v.optional(v.id("folders")),
+  })
+    .index("by_status", ["status"])
+    .index("by_folderId", ["folderId"]),
+
+  folders: defineTable({
+    name: v.string(),
+    parentId: v.optional(v.id("folders")),
+    sortOrder: v.number(),
+    updatedAt: v.number(),
+  }).index("by_parentId", ["parentId"]),
 
   questions: defineTable({
     testId: v.id("tests"),

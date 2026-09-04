@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Shield, ChevronLeft } from "lucide-react";
 import { AdminAccess } from "../../types";
 import { adminReducer, initialAdminState } from "./adminReducer";
-import { TestsSidebar } from "./TestsSidebar";
+import { TestsSidebar, type QuizFolder } from "./TestsSidebar";
 import { TestEditorPage } from "./TestEditorPage";
 import { ImportReview } from "./ImportReview";
 
@@ -24,11 +24,16 @@ export function AdminShell({
   onLogout,
 }: AdminShellProps) {
   const [state, dispatch] = React.useReducer(adminReducer, initialAdminState);
+  const [selectedFolderId, setSelectedFolderId] = React.useState<Id<"folders"> | null>(null);
   const tests =
     useQuery(api.admin.getAdminTests, {
       adminPassword,
     }) ?? [];
-  const selectedTestId = state.selectedTestId ?? tests[0]?._id ?? null;
+  const folders = useQuery(api.admin.getFolders, { adminPassword }) ?? [];
+  const firstTestInFolder = tests.find(
+    (test) => (test.folderId ?? null) === selectedFolderId,
+  );
+  const selectedTestId = state.selectedTestId ?? firstTestInFolder?._id ?? null;
   const testEditor = useQuery(
     api.admin.getTestEditor,
     selectedTestId ? { adminPassword, testId: selectedTestId } : "skip",
@@ -43,12 +48,16 @@ export function AdminShell({
   const duplicateQuestion = useMutation(api.admin.duplicateQuestion);
   const deleteQuestionsBulk = useMutation(api.admin.deleteQuestionsBulk);
   const reorderQuestions = useMutation(api.admin.reorderQuestions);
+  const createFolder = useMutation(api.admin.createFolder);
+  const renameFolder = useMutation(api.admin.renameFolder);
+  const deleteFolder = useMutation(api.admin.deleteFolder);
+  const moveTestToFolder = useMutation(api.admin.moveTestToFolder);
 
   React.useEffect(() => {
-    if (!state.selectedTestId && tests[0]?._id) {
-      dispatch({ type: "select_test", testId: tests[0]._id });
+    if (!state.selectedTestId && firstTestInFolder?._id) {
+      dispatch({ type: "select_test", testId: firstTestInFolder._id });
     }
-  }, [state.selectedTestId, tests]);
+  }, [firstTestInFolder?._id, state.selectedTestId]);
 
   React.useEffect(() => {
     const dirty =
@@ -91,17 +100,14 @@ export function AdminShell({
 
   const filteredTests = React.useMemo(() => {
     const search = state.filters.testSearch.trim().toLowerCase();
-    if (!search) {
-      return tests;
-    }
-
     return tests.filter((test) => {
+      if (!search) return (test.folderId ?? null) === selectedFolderId;
       return (
         test.name.toLowerCase().includes(search) ||
         (test.description ?? "").toLowerCase().includes(search)
       );
     });
-  }, [state.filters.testSearch, tests]);
+  }, [selectedFolderId, state.filters.testSearch, tests]);
 
   const handleSelectTest = (testId: Id<"tests">) => {
     if (!confirmDiscardChanges()) {
@@ -125,6 +131,7 @@ export function AdminShell({
       const testId = await createTestDraft({
         adminPassword,
         name: name.trim(),
+        folderId: selectedFolderId ?? undefined,
       });
       dispatch({ type: "select_test", testId });
       dispatch({ type: "set_view", view: "tests" });
@@ -189,12 +196,44 @@ export function AdminShell({
       <div className="mx-auto grid w-full max-w-[1800px] gap-8 px-4 py-6 sm:px-6 lg:px-8 xl:grid-cols-[360px_minmax(0,1fr)]">
         <TestsSidebar
           tests={filteredTests}
+          folders={folders}
           selectedTestId={selectedTestId}
+          selectedFolderId={selectedFolderId}
           searchValue={state.filters.testSearch}
           onSearchChange={(value) =>
             dispatch({ type: "set_filter", key: "testSearch", value })
           }
           onSelectTest={handleSelectTest}
+          onSelectFolder={(folderId) => {
+            if (!confirmDiscardChanges()) return;
+            setSelectedFolderId(folderId);
+            dispatch({ type: "select_test", testId: null });
+          }}
+          onCreateFolder={(parentId) => {
+            const name = window.prompt(parentId ? "Name the new subfolder:" : "Name the new folder:");
+            if (!name?.trim()) return;
+            void createFolder({ adminPassword, name: name.trim(), parentId: parentId ?? undefined })
+              .then((folderId) => { setSelectedFolderId(folderId); toast.success("Folder created."); })
+              .catch((error) => toast.error(error instanceof Error ? error.message : "Failed to create folder."));
+          }}
+          onRenameFolder={(folder: QuizFolder) => {
+            const name = window.prompt("Rename folder:", folder.name);
+            if (!name?.trim() || name.trim() === folder.name) return;
+            void renameFolder({ adminPassword, folderId: folder._id, name: name.trim() })
+              .then(() => toast.success("Folder renamed."))
+              .catch((error) => toast.error(error instanceof Error ? error.message : "Failed to rename folder."));
+          }}
+          onDeleteFolder={(folder: QuizFolder) => {
+            if (!window.confirm(`Delete the empty folder "${folder.name}"?`)) return;
+            void deleteFolder({ adminPassword, folderId: folder._id })
+              .then(() => { if (selectedFolderId === folder._id) setSelectedFolderId(null); toast.success("Folder deleted."); })
+              .catch((error) => toast.error(error instanceof Error ? error.message : "Failed to delete folder."));
+          }}
+          onMoveTest={(testId, folderId) => {
+            void moveTestToFolder({ adminPassword, testId, folderId: folderId ?? undefined })
+              .then(() => toast.success("Quiz moved."))
+              .catch((error) => toast.error(error instanceof Error ? error.message : "Failed to move quiz."));
+          }}
           onCreateDraft={() => void handleCreateDraft()}
           onOpenImport={() => {
             if (!confirmDiscardChanges()) {
