@@ -42,6 +42,7 @@ export function AdminShell({
   const createTestDraft = useMutation(api.admin.createTestDraft);
   const updateTestDetails = useMutation(api.admin.updateTestDetails);
   const setTestStatus = useMutation(api.admin.setTestStatus);
+  const publishTestsBulk = useMutation(api.admin.publishTestsBulk);
   const deleteTestCascade = useMutation(api.admin.deleteTestCascade);
   const createQuestion = useMutation(api.admin.createQuestion);
   const updateQuestion = useMutation(api.admin.updateQuestion);
@@ -233,6 +234,15 @@ export function AdminShell({
             void moveTestToFolder({ adminPassword, testId, folderId: folderId ?? undefined })
               .then(() => toast.success("Quiz moved."))
               .catch((error) => toast.error(error instanceof Error ? error.message : "Failed to move quiz."));
+          }}
+          onPublishTests={async (testIds) => {
+            try {
+              const result = await publishTestsBulk({ adminPassword, testIds });
+              toast.success(`Published ${result.publishedCount} test(s).`);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "Failed to publish selected tests.");
+              throw error;
+            }
           }}
           onCreateDraft={() => void handleCreateDraft()}
           onOpenImport={() => {

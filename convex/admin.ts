@@ -517,6 +517,36 @@ export const setTestStatus = mutation({
   },
 });
 
+export const publishTestsBulk = mutation({
+  args: {
+    adminPassword: v.string(),
+    testIds: v.array(v.id("tests")),
+  },
+  handler: async (ctx, args) => {
+    requireAdminPassword(args.adminPassword);
+    await backfillAdminDataShape(ctx);
+
+    const testIds = [...new Set(args.testIds)];
+    if (testIds.length === 0) {
+      throw new Error("Select at least one test to publish.");
+    }
+
+    const tests = await Promise.all(testIds.map((testId) => ctx.db.get(testId)));
+    if (tests.some((test) => !test)) {
+      throw new Error("One or more selected tests were not found.");
+    }
+
+    const updatedAt = Date.now();
+    await Promise.all(
+      testIds.map((testId) =>
+        ctx.db.patch(testId, { status: "published", updatedAt }),
+      ),
+    );
+
+    return { success: true, publishedCount: testIds.length };
+  },
+});
+
 export const deleteTestCascade = mutation({
   args: {
     adminPassword: v.string(),

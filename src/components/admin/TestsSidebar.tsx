@@ -9,6 +9,7 @@ interface Props {
   onSearchChange: (value: string) => void; onSelectTest: (id: Id<"tests">) => void; onSelectFolder: (id: Id<"folders"> | null) => void;
   onCreateFolder: (parentId: Id<"folders"> | null) => void; onRenameFolder: (folder: QuizFolder) => void; onDeleteFolder: (folder: QuizFolder) => void;
   onMoveTest: (testId: Id<"tests">, folderId: Id<"folders"> | null) => void; onCreateDraft: () => void; onOpenImport: () => void;
+  onPublishTests: (testIds: Id<"tests">[]) => Promise<void>;
 }
 
 function FolderRow({ folder, folders, depth, selectedId, expanded, onToggle, onSelect, onCreate, onRename, onDelete }: {
@@ -36,8 +37,32 @@ function FolderRow({ folder, folders, depth, selectedId, expanded, onToggle, onS
 
 export function TestsSidebar(props: Props) {
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+  const [selectedTestIds, setSelectedTestIds] = React.useState<Set<Id<"tests">>>(new Set());
+  const [isPublishing, setIsPublishing] = React.useState(false);
   const roots = props.folders.filter((folder) => !folder.parentId);
+  React.useEffect(() => {
+    const visibleIds = new Set(props.tests.map((test) => test._id));
+    setSelectedTestIds((current) => {
+      const next = new Set([...current].filter((testId) => visibleIds.has(testId)));
+      return next.size === current.size ? current : next;
+    });
+  }, [props.tests]);
   const toggle = (id: string) => setExpanded((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const allVisibleSelected = props.tests.length > 0 && props.tests.every((test) => selectedTestIds.has(test._id));
+  const toggleTestSelection = (testId: Id<"tests">) => setSelectedTestIds((current) => {
+    const next = new Set(current);
+    next.has(testId) ? next.delete(testId) : next.add(testId);
+    return next;
+  });
+  const publishSelected = async () => {
+    setIsPublishing(true);
+    try {
+      await props.onPublishTests([...selectedTestIds]);
+      setSelectedTestIds(new Set());
+    } finally {
+      setIsPublishing(false);
+    }
+  };
   return <aside className="card flex h-full flex-col overflow-hidden">
     <div className="space-y-3 border-b border-[var(--color-border)] p-5">
       <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Quiz library</h2><span className="badge badge-rose">{props.tests.length}</span></div>
@@ -49,10 +74,26 @@ export function TestsSidebar(props: Props) {
       <button type="button" onClick={() => props.onSelectFolder(null)} className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm ${props.selectedFolderId === null ? "bg-[var(--color-primary-subtle)]" : "hover:bg-[var(--color-bg)]"}`}><Folder className="h-4 w-4" /> Unfiled quizzes</button>
       {roots.map((folder) => <FolderRow key={folder._id} folder={folder} folders={props.folders} depth={0} selectedId={props.selectedFolderId} expanded={expanded} onToggle={toggle} onSelect={props.onSelectFolder} onCreate={props.onCreateFolder} onRename={props.onRenameFolder} onDelete={props.onDeleteFolder} />)}
     </div>
+    {props.tests.length > 0 && <div className="flex items-center gap-2 border-b border-[var(--color-border)] p-3">
+      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={allVisibleSelected}
+          onChange={() => setSelectedTestIds(allVisibleSelected ? new Set() : new Set(props.tests.map((test) => test._id)))}
+        />
+        {selectedTestIds.size > 0 ? `${selectedTestIds.size} selected` : "Select all"}
+      </label>
+      <button type="button" className="btn btn-primary px-3 py-1.5 text-xs" disabled={selectedTestIds.size === 0 || isPublishing} onClick={() => void publishSelected()}>
+        {isPublishing ? "Publishing..." : "Publish selected"}
+      </button>
+    </div>}
     <div className="flex-1 space-y-2 overflow-y-auto p-3">
       {props.tests.length === 0 && <p className="p-5 text-center text-sm text-[var(--color-text-secondary)]">No quizzes in this folder.</p>}
       {props.tests.map((test) => <div key={test._id} className={`rounded-2xl border p-3 ${props.selectedTestId === test._id ? "border-[var(--color-primary)] bg-[var(--color-primary-subtle)]" : "border-[var(--color-border)]"}`}>
-        <button type="button" className="w-full text-left" onClick={() => props.onSelectTest(test._id)}><div className="flex justify-between gap-2"><span className="truncate font-semibold">{test.name}</span><span className="text-xs">{test.status}</span></div><div className="mt-1 text-xs text-[var(--color-text-muted)]">{test.questionCount} questions</div></button>
+        <div className="flex items-start gap-2">
+          <input type="checkbox" className="mt-1" aria-label={`Select ${test.name}`} checked={selectedTestIds.has(test._id)} onChange={() => toggleTestSelection(test._id)} />
+          <button type="button" className="min-w-0 flex-1 text-left" onClick={() => props.onSelectTest(test._id)}><div className="flex justify-between gap-2"><span className="truncate font-semibold">{test.name}</span><span className="text-xs">{test.status}</span></div><div className="mt-1 text-xs text-[var(--color-text-muted)]">{test.questionCount} questions</div></button>
+        </div>
         <select aria-label={`Move ${test.name} to folder`} value={test.folderId ?? ""} onChange={(e) => props.onMoveTest(test._id, (e.target.value || null) as Id<"folders"> | null)} className="mt-2 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 text-xs">
           <option value="">Unfiled quizzes</option>{props.folders.map((folder) => <option key={folder._id} value={folder._id}>{folder.name}</option>)}
         </select>
