@@ -120,23 +120,34 @@ export function AdminGate({ onBack }: AdminGateProps) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleVerifyPassword();
+            }}
+          >
+            <label htmlFor="admin-password" className="block text-sm font-medium text-[var(--color-text)]">
+              Password
+            </label>
             <input
+              id="admin-password"
               type="password"
               value={passwordInput}
               onChange={(event) => setPasswordInput(event.target.value)}
               placeholder="Admin password"
-              className="auth-input-field"
+              autoComplete="current-password"
+              autoFocus
+              className="input-field w-full"
             />
             <button
-              type="button"
-              onClick={() => void handleVerifyPassword()}
+              type="submit"
               disabled={isVerifying}
-              className="btn btn-primary w-full"
+              className="btn btn-primary w-full justify-center"
             >
               {isVerifying ? "Checking..." : "Enter Admin"}
             </button>
-          </div>
+          </form>
         </section>
 
         <button onClick={onBack} className="btn btn-secondary w-full">
