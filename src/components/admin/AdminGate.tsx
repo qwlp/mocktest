@@ -2,7 +2,7 @@ import React from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { toast } from "sonner";
-import { Shield, Lock, LogOut } from "lucide-react";
+import { Shield } from "lucide-react";
 import { AdminShell } from "./AdminShell";
 
 interface AdminGateProps {
@@ -104,7 +104,7 @@ export function AdminGate({ onBack }: AdminGateProps) {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-start">
+      <div className="mx-auto max-w-xl space-y-4">
         <section className="card p-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-[var(--color-primary)] text-white flex items-center justify-center shadow-soft-md">
@@ -115,7 +115,7 @@ export function AdminGate({ onBack }: AdminGateProps) {
                 Admin Access
               </h1>
               <p className="text-[var(--color-text-secondary)]">
-                Enter the hard-coded admin password to open the editor.
+                Enter the admin password to open the editor.
               </p>
             </div>
           </div>
@@ -139,25 +139,9 @@ export function AdminGate({ onBack }: AdminGateProps) {
           </div>
         </section>
 
-        <section className="space-y-6">
-          <div className="card p-6">
-            <div className="flex items-center gap-2 mb-3 text-[var(--color-text)]">
-              <Lock className="w-4 h-4 text-[var(--color-primary)]" />
-              <h2 className="font-semibold">Admin Password</h2>
-            </div>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-              The password is hard-coded to <code className="bg-[var(--color-bg)] px-1 py-0.5 rounded">admin123</code>.
-            </p>
-            <button type="button" onClick={handleLogout} className="btn btn-secondary w-full">
-              <LogOut className="w-4 h-4" />
-              Clear Saved Admin Session
-            </button>
-          </div>
-
-          <button onClick={onBack} className="btn btn-secondary w-full">
-            Back to Tests
-          </button>
-        </section>
+        <button onClick={onBack} className="btn btn-secondary w-full">
+          Back to Tests
+        </button>
       </div>
     </div>
   );
