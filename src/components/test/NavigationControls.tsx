@@ -31,9 +31,6 @@ export function NavigationControls({
           className={`w-5 h-5 transition-transform duration-300 ${!isFirstQuestion ? "group-hover:-translate-x-1" : ""}`}
         />
         <span>Previous</span>
-        <span className="hidden sm:inline text-[var(--color-text-muted)] text-xs ml-2">
-          <kbd className="kbd text-[10px]">←</kbd>
-        </span>
       </button>
 
       {/* Next Button */}
@@ -46,9 +43,6 @@ export function NavigationControls({
         <ChevronRight
           className={`w-5 h-5 transition-transform duration-300 ${!isLastQuestion ? "group-hover:translate-x-1" : ""}`}
         />
-        <span className="hidden sm:inline text-[var(--color-text-muted)] text-xs ml-2">
-          <kbd className="kbd text-[10px]">→</kbd>
-        </span>
       </button>
     </div>
   );
