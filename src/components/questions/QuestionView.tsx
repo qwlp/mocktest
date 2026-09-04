@@ -157,9 +157,14 @@ export function QuestionView({
                 />
               </div>
 
-              {/* Feedback Icon */}
+              {/* Explicit feedback label (not color-only) */}
               {feedback && (
-                <div className="flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <span className={`hidden text-sm font-semibold sm:inline ${feedback === "incorrect" ? "text-[var(--color-error)]" : feedback === "missed" ? "text-[var(--color-warning)]" : "text-[var(--color-success)]"}`}>
+                    {feedback === "correct" && "Your answer · Correct"}
+                    {feedback === "incorrect" && "Your answer · Incorrect"}
+                    {feedback === "missed" && "Correct answer"}
+                  </span>
                   {feedback === "correct" && (
                     <div className="w-8 h-8 rounded-full bg-[var(--color-success)] flex items-center justify-center">
                       <Check className="w-5 h-5 text-white" />
@@ -180,25 +185,46 @@ export function QuestionView({
             </div>
 
             {feedback && (
-              <div id={`feedback-${index}`} className="sr-only">
+              <div id={`feedback-${index}`} className="mt-2 pl-12 text-sm font-semibold sm:hidden">
                 {getFeedbackText(feedback)}
               </div>
             )}
           </div>
         );
       })}
+
+      {showFeedback && (
+        <div className="mt-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-4" role="status">
+          <p className="font-semibold text-[var(--color-text)]">
+            {areAnswersCorrect(userAnswer, question.correctAnswers)
+              ? "You got this question right."
+              : "You got this question wrong."}
+          </p>
+          {!areAnswersCorrect(userAnswer, question.correctAnswers) && (
+            <div className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              <span className="font-semibold text-[var(--color-success)]">Correct answer{question.correctAnswers.length > 1 ? "s" : ""}:</span>{" "}
+              {question.correctAnswers.join(", ")}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+function areAnswersCorrect(userAnswers: string[], correctAnswers: string[]) {
+  return userAnswers.length === correctAnswers.length &&
+    correctAnswers.every((answer) => userAnswers.includes(answer));
 }
 
 function getFeedbackText(feedback: FeedbackType): string {
   switch (feedback) {
     case "correct":
-      return "Correct answer";
+      return "Your answer — Correct";
     case "incorrect":
-      return "Incorrect answer";
+      return "Your answer — Incorrect";
     case "missed":
-      return "This was a correct answer you missed";
+      return "Correct answer — You missed this option";
     default:
       return "";
   }
